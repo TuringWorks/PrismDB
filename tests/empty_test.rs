@@ -1,7 +1,7 @@
 #[cfg(test)]
 mod empty_tests {
-    use prismdb::Database;
-    use prismdb::PrismDBResult;
+    use prism::Database;
+    use prism::PrismDBResult;
 
     #[test]
     fn test_empty_select() -> PrismDBResult<()> {

@@ -5,7 +5,7 @@ use crate::types::vector::Vector;
 use std::fmt;
 
 /// A DataChunk represents a collection of vectors (columns) for batch processing
-/// This is the fundamental unit of data processing in DuckDB
+/// This is the fundamental unit of data processing in PrismDB
 #[derive(Debug, Clone)]
 pub struct DataChunk {
     /// The vectors (columns) in this chunk
@@ -392,7 +392,7 @@ impl DataChunk {
         DataChunk::from_vectors(sliced_vectors)
     }
 
-    /// Slice this chunk using a SelectionVector (DuckDB-faithful)
+    /// Slice this chunk using a SelectionVector (PrismDB-faithful)
     /// This is the zero-copy filtering mechanism - creates a new chunk
     /// with only the selected rows
     pub fn slice(&self, selection: &crate::types::SelectionVector) -> PrismDBResult<DataChunk> {

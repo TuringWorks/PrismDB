@@ -163,7 +163,7 @@ impl SelectionVector {
         }
     }
 
-    /// Get the index at a specific position (DuckDB-style API)
+    /// Get the index at a specific position (PrismDB-style API)
     #[inline]
     pub fn get_index(&self, position: usize) -> usize {
         debug_assert!(
@@ -236,7 +236,7 @@ impl SelectionVector {
 
     /// Create a new SelectionVector by slicing this one with another
     /// This implements composition: result[i] = self[other[i]]
-    /// This is a key DuckDB optimization for chaining filters
+    /// This is a key PrismDB optimization for chaining filters
     pub fn slice(&self, other: &SelectionVector) -> SelectionVector {
         let mut result = SelectionVector::new(other.count());
 
@@ -294,7 +294,7 @@ impl SelectionVector {
     }
 }
 
-/// A Vector represents columnar data in DuckDB
+/// A Vector represents columnar data in PrismDB
 /// It contains the actual data, a validity mask, and optionally a selection vector
 #[derive(Debug, Clone)]
 pub struct Vector {

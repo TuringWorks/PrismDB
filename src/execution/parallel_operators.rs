@@ -1,6 +1,6 @@
 //! High-Performance Parallel Operators
 //!
-//! This module implements DuckDB's morsel-driven parallelism:
+//! This module implements PrismDB's morsel-driven parallelism:
 //! - Parallel Hash Join: Multi-threaded build and probe phases
 //! - Parallel Hash Aggregate: Thread-local pre-aggregation + global merge
 //! - Parallel Sort: Multi-threaded quicksort/mergesort
@@ -316,7 +316,7 @@ impl ExecutionOperator for ParallelHashJoinOperator {
 
 /// Parallel Hash Aggregate Operator
 ///
-/// Architecture (DuckDB's approach):
+/// Architecture:
 /// 1. Thread-local Pre-aggregation:
 ///    - Each thread maintains its own hash table
 ///    - Process input chunks in parallel
@@ -617,7 +617,7 @@ impl ExecutionOperator for ParallelHashAggregateOperator {
 
 /// Parallel Sort Operator
 ///
-/// Architecture (DuckDB's approach):
+/// Architecture:
 /// 1. Collect all input data into memory
 /// 2. Use Rayon's parallel sort (based on quicksort/mergesort)
 /// 3. Return sorted results
@@ -627,7 +627,7 @@ impl ExecutionOperator for ParallelHashAggregateOperator {
 /// - Space: O(n) for materialized data
 /// - Cache-friendly: locality-preserving partitioning
 ///
-/// Note: For very large datasets, DuckDB uses external merge sort.
+/// Note: For very large datasets, PrismDB uses external merge sort.
 /// This implementation uses in-memory parallel sort.
 pub struct ParallelSortOperator {
     sort: crate::planner::PhysicalSort,

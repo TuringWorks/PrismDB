@@ -1,4 +1,4 @@
-use prismdb::{Database, PrismDBResult};
+use prism::{Database, PrismDBResult};
 
 #[test]
 fn test_stream_behavior() -> PrismDBResult<()> {

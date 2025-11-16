@@ -1,11 +1,11 @@
-//! Integration tests for DuckDB storage components
+//! Integration tests for PrismDB storage components
 //! 
 //! These tests verify the integration between table storage, transactions,
 //! WAL, and buffer management systems.
 
-use prismdb::storage::*;
-use prismdb::types::*;
-use prismdb::PrismDBResult;
+use prism::storage::*;
+use prism::types::*;
+use prism::PrismDBResult;
 use std::sync::{Arc, RwLock};
 use tempfile::TempDir;
 use uuid::Uuid;

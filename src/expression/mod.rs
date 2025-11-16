@@ -1,6 +1,6 @@
-//! Expression system for DuckDB
+//! Expression system for PrismDB
 //!
-//! This module provides the core expression framework used throughout DuckDB for
+//! This module provides the core expression framework used throughout PrismDB for
 //! representing and evaluating expressions in queries.
 
 pub mod aggregate;

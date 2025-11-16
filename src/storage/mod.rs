@@ -1,4 +1,4 @@
-//! Storage engine module for DuckDB
+//! Storage engine module for PrismDB
 //!
 //! This module provides the core storage functionality including:
 //! - Table data management

@@ -1,9 +1,9 @@
 //! Direct executor test to bypass Database wrapper
 
-use prismdb::execution::{QueryExecutor, ExecutionContext};
-use prismdb::catalog::Catalog;
-use prismdb::storage::TransactionManager;
-use prismdb::PrismDBResult;
+use prism::execution::{QueryExecutor, ExecutionContext};
+use prism::catalog::Catalog;
+use prism::storage::TransactionManager;
+use prism::PrismDBResult;
 use std::sync::{Arc, RwLock};
 
 #[test]

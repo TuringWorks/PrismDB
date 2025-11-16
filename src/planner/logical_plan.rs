@@ -195,7 +195,7 @@ impl LogicalFilter {
     }
 }
 
-/// QUALIFY operation - filter rows based on window function results (DuckDB extension)
+/// QUALIFY operation - filter rows based on window function results (PrismDB extension)
 /// This is applied after window functions are computed but before ORDER BY/LIMIT
 #[derive(Debug, Clone)]
 pub struct LogicalQualify {

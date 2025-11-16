@@ -1,4 +1,4 @@
-//! Comprehensive Demo of DuckDB-RS Features
+//! Comprehensive Demo of PrismDB Features
 //!
 //! This demo showcases basic and advanced features including:
 //! - Database operations (CREATE, INSERT, SELECT)
@@ -9,10 +9,10 @@
 //! - Window functions
 //! - Complex queries
 
-use prismdb::{Database, PrismDBResult};
+use prism::{Database, PrismDBResult};
 
 fn main() -> PrismDBResult<()> {
-    println!("🦆 DuckDB-RS Comprehensive Feature Demo");
+    println!("🔷 PrismDB Comprehensive Feature Demo");
     println!("==========================================\n");
 
     // Create in-memory database
@@ -53,7 +53,7 @@ fn main() -> PrismDBResult<()> {
     println!("🎉 All tests completed successfully!");
     println!("✅ 122 functions implemented and working");
     println!("✅ 148/148 tests passing");
-    println!("✅ DuckDB-RS is production-ready!");
+    println!("✅ PrismDB is production-ready!");
 
     Ok(())
 }
@@ -95,15 +95,15 @@ fn test_string_functions(db: &mut Database) -> PrismDBResult<()> {
     let queries = vec![
         ("UPPER", "SELECT UPPER('hello') as result"),
         ("LOWER", "SELECT LOWER('WORLD') as result"),
-        ("LENGTH", "SELECT LENGTH('DuckDB-RS') as result"),
-        ("SUBSTRING", "SELECT SUBSTRING('DuckDB-RS', 1, 6) as result"),
-        ("CONCAT", "SELECT CONCAT('Duck', 'DB') as result"),
+        ("LENGTH", "SELECT LENGTH('PrismDB') as result"),
+        ("SUBSTRING", "SELECT SUBSTRING('PrismDB', 1, 6) as result"),
+        ("CONCAT", "SELECT CONCAT('Prism', 'DB') as result"),
         ("REVERSE", "SELECT REVERSE('stressed') as result"),
         ("REPLACE", "SELECT REPLACE('Hello World', 'World', 'Rust') as result"),
         ("TRIM", "SELECT TRIM('  spaces  ') as result"),
-        ("POSITION", "SELECT POSITION('DB' IN 'DuckDB-RS') as result"),
-        ("LEFT", "SELECT LEFT('DuckDB', 4) as result"),
-        ("RIGHT", "SELECT RIGHT('DuckDB', 2) as result"),
+        ("POSITION", "SELECT POSITION('DB' IN 'PrismDB') as result"),
+        ("LEFT", "SELECT LEFT('PrismDB', 4) as result"),
+        ("RIGHT", "SELECT RIGHT('PrismDB', 2) as result"),
         ("LPAD", "SELECT LPAD('x', 5, '-') as result"),
         ("REPEAT", "SELECT REPEAT('ab', 3) as result"),
     ];

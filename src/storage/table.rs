@@ -1,4 +1,4 @@
-//! Table data management for DuckDB
+//! Table data management for PrismDB
 //!
 //! This module provides the core table storage functionality including:
 //! - Table metadata and schema

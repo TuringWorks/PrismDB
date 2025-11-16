@@ -1,4 +1,4 @@
-/// Compression module for DuckDBRS storage engine
+/// Compression module for PrismDB storage engine
 ///
 /// This module provides compression algorithms for columnar data storage.
 /// Compression is critical for reducing storage size and improving I/O performance.
@@ -24,7 +24,7 @@
 /// ## Usage Example:
 ///
 /// ```ignore
-/// use duckdbrs::storage::compression::*;
+/// use prismdb::storage::compression::*;
 ///
 /// // Manual compression with specific algorithm
 /// let comp = DictionaryCompression::new();

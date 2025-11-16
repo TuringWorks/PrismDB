@@ -3,7 +3,7 @@
 //! This file contains runnable examples showing real-world use cases
 //! for data transformation using PIVOT and UNPIVOT.
 
-use prismdb::database::Database;
+use prism::database::Database;
 
 /// Example 1: Sales Report - Monthly revenue by region
 fn example_sales_pivot() -> Result<(), Box<dyn std::error::Error>> {
@@ -376,7 +376,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("\n");
     println!("╔═══════════════════════════════════════════════════════════════════════╗");
     println!("║                                                                       ║");
-    println!("║         PIVOT / UNPIVOT Examples - DuckDB Rust Implementation        ║");
+    println!("║         PIVOT / UNPIVOT Examples - PrismDB Implementation        ║");
     println!("║                                                                       ║");
     println!("║  Demonstrating data transformation techniques for real-world use     ║");
     println!("║                                                                       ║");
@@ -409,7 +409,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("  • UNPIVOT can include/exclude NULLs");
     println!("  • Integrates with JOINs, CTEs, window functions");
 
-    println!("\n✓ All examples demonstrate DuckDB-compatible SQL syntax\n");
+    println!("\n✓ All examples demonstrate PrismDB SQL syntax\n");
 
     Ok(())
 }

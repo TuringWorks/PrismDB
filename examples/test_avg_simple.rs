@@ -1,4 +1,4 @@
-use prismdb::*;
+use prism::*;
 
 fn main() -> PrismDBResult<()> {
     let mut db = Database::new_in_memory()?;

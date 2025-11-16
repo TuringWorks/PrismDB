@@ -1,7 +1,7 @@
 use serde::{Deserialize, Serialize};
 use std::fmt;
 
-/// Physical types represent how data is stored internally in DuckDB
+/// Physical types represent how data is stored internally in PrismDB
 /// These are the low-level representations used for memory layout and storage
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum PhysicalType {

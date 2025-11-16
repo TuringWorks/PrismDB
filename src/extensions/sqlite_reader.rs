@@ -20,7 +20,7 @@ impl SqliteReader {
     /// Read a table from SQLite and return a DataChunk
     pub fn read_table(&self, table_name: &str) -> PrismDBResult<DataChunk> {
         // Write data to a temporary file
-        let temp_file = std::env::temp_dir().join(format!("duckdb_sqlite_{}.db", uuid::Uuid::new_v4()));
+        let temp_file = std::env::temp_dir().join(format!("prismdb_sqlite_{}.db", uuid::Uuid::new_v4()));
         std::fs::write(&temp_file, &self.data)
             .map_err(|e| PrismDBError::Io(e))?;
 
@@ -115,7 +115,7 @@ impl SqliteReader {
 
     /// Get column names from SQLite table
     pub fn get_column_names(&self, table_name: &str) -> PrismDBResult<Vec<String>> {
-        let temp_file = std::env::temp_dir().join(format!("duckdb_sqlite_{}.db", uuid::Uuid::new_v4()));
+        let temp_file = std::env::temp_dir().join(format!("prismdb_sqlite_{}.db", uuid::Uuid::new_v4()));
         std::fs::write(&temp_file, &self.data)
             .map_err(|e| PrismDBError::Io(e))?;
 
@@ -143,7 +143,7 @@ impl SqliteReader {
 
     /// Get column types from SQLite table
     pub fn get_column_types(&self, table_name: &str) -> PrismDBResult<Vec<LogicalType>> {
-        let temp_file = std::env::temp_dir().join(format!("duckdb_sqlite_{}.db", uuid::Uuid::new_v4()));
+        let temp_file = std::env::temp_dir().join(format!("prismdb_sqlite_{}.db", uuid::Uuid::new_v4()));
         std::fs::write(&temp_file, &self.data)
             .map_err(|e| PrismDBError::Io(e))?;
 
@@ -170,7 +170,7 @@ impl SqliteReader {
         Ok(column_types)
     }
 
-    /// Convert SQLite value to DuckDB Value
+    /// Convert SQLite value to PrismDB Value
     fn convert_sqlite_value(&self, value: ValueRef) -> PrismDBResult<Value> {
         match value {
             ValueRef::Null => Ok(Value::Null),
@@ -187,7 +187,7 @@ impl SqliteReader {
         }
     }
 
-    /// Convert SQLite data type to DuckDB logical type
+    /// Convert SQLite data type to PrismDB logical type
     fn sqlite_type_to_logical_type(&self, sqlite_type: &str) -> PrismDBResult<LogicalType> {
         let upper_type = sqlite_type.to_uppercase();
 
@@ -212,7 +212,7 @@ impl SqliteReader {
 
     /// List all tables in the SQLite database
     pub fn list_tables(&self) -> PrismDBResult<Vec<String>> {
-        let temp_file = std::env::temp_dir().join(format!("duckdb_sqlite_{}.db", uuid::Uuid::new_v4()));
+        let temp_file = std::env::temp_dir().join(format!("prismdb_sqlite_{}.db", uuid::Uuid::new_v4()));
         std::fs::write(&temp_file, &self.data)
             .map_err(|e| PrismDBError::Io(e))?;
 

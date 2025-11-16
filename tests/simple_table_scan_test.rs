@@ -2,14 +2,14 @@
 //!
 //! This test verifies that TableScan can read data from storage at a low level
 
-use prismdb::catalog::{Catalog, Schema};
-use prismdb::execution::pipeline::TableScanSource;
-use prismdb::execution::ExecutionContext;
-use prismdb::planner::PhysicalTableScan;
-use prismdb::storage::{
+use prism::catalog::{Catalog, Schema};
+use prism::execution::pipeline::TableScanSource;
+use prism::execution::ExecutionContext;
+use prism::planner::PhysicalTableScan;
+use prism::storage::{
     BufferManager, ColumnInfo, TableInfo, TransactionManager, WalManager,
 };
-use prismdb::types::{LogicalType, Value};
+use prism::types::{LogicalType, Value};
 use std::sync::{Arc, RwLock};
 
 #[test]
@@ -54,21 +54,21 @@ fn test_table_scan_source_reads_data() -> Result<(), Box<dyn std::error::Error>>
     // Create execution context
     let catalog_arc = Arc::new(RwLock::new(catalog));
 
-    use prismdb::storage::BufferConfig;
+    use prism::storage::BufferConfig;
     let buffer_config = BufferConfig::new(1024 * 1024 * 1024, 1000); // 1GB, 1000 pages
     let _buffer_manager = Arc::new(BufferManager::new(buffer_config));
 
     // Use temp directory for WAL
     let temp_dir = std::env::temp_dir();
-    let wal_dir = temp_dir.join("duckdbrs_test_wal");
+    let wal_dir = temp_dir.join("prismdb_test_wal");
     let _wal_manager = Arc::new(WalManager::new(&wal_dir)?);
 
     let transaction_manager = Arc::new(TransactionManager::new());
     let context = ExecutionContext::new(transaction_manager, catalog_arc);
 
     // Create a PhysicalTableScan
-    // use prismdb::expression::Expression; // Not needed
-    use prismdb::planner::PhysicalColumn;
+    // use prism::expression::Expression; // Not needed
+    use prism::planner::PhysicalColumn;
 
     let scan = PhysicalTableScan {
         table_name: "test_table".to_string(),

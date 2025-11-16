@@ -1,4 +1,4 @@
-//! Execution Engine for DuckDB
+//! Execution Engine for PrismDB
 //!
 //! This module provides the execution engine that executes physical query plans
 //! and produces results. It includes operators for various SQL operations.

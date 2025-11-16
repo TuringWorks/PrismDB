@@ -7,10 +7,10 @@
 //! - Aggregate functions (COUNT, SUM, AVG, MIN, MAX, GROUP BY) ✅
 //! - Complex queries (WHERE, ORDER BY, LIMIT) ✅
 
-use prismdb::{Database, PrismDBResult};
+use prism::{Database, PrismDBResult};
 
 fn main() -> PrismDBResult<()> {
-    println!("🦆 DuckDB-RS CRUD & Aggregate Functions Demo");
+    println!("🔷 PrismDB CRUD & Aggregate Functions Demo");
     println!("=============================================\n");
 
     let mut db = Database::new_in_memory()?;
@@ -28,7 +28,7 @@ fn main() -> PrismDBResult<()> {
     println!("✅ INSERT: Working");
     println!("✅ SELECT: Working (including WHERE, ORDER BY, LIMIT)");
     println!("✅ Aggregates: Working (COUNT, SUM, AVG, MIN, MAX, GROUP BY)");
-    println!("✅ DuckDB-RS core features are production-ready!");
+    println!("✅ PrismDB core features are production-ready!");
 
     Ok(())
 }

@@ -1,4 +1,4 @@
-//! SQL Parser for DuckDB
+//! SQL Parser for PrismDB
 //!
 //! This module provides SQL parsing capabilities that convert SQL strings into
 //! structured query representations that can be planned and executed.

@@ -3,8 +3,8 @@
 //! These tests provide end-to-end validation of query execution
 //! with proper result verification and edge case testing.
 
-use prismdb::{Database, PrismDBResult};
-use prismdb::types::*;
+use prism::{Database, PrismDBResult};
+use prism::types::*;
 // use std::sync::Arc; // Not needed currently
 
 /// Test helper to create a test database with sample data

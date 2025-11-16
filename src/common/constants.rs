@@ -1,4 +1,4 @@
-//! Constants used throughout DuckDB
+//! Constants used throughout PrismDB
 
 /// Default vector size for processing
 pub const STANDARD_VECTOR_SIZE: usize = 2048;
@@ -36,14 +36,14 @@ pub const MAX_THREADS: usize = 64;
 /// File format version
 pub const STORAGE_FORMAT_VERSION: u32 = 1;
 
-/// Magic number for DuckDB files
-pub const STORAGE_MAGIC: &[u8; 4] = b"DUCK";
+/// Magic number for PrismDB files
+pub const STORAGE_MAGIC: &[u8; 4] = b"PRSM";
 
 /// Extension file suffix
-pub const EXTENSION_SUFFIX: &str = ".duckdb_extension";
+pub const EXTENSION_SUFFIX: &str = ".prismdb_extension";
 
 /// Default database file name
-pub const DEFAULT_DATABASE_FILE: &str = "duckdb.db";
+pub const DEFAULT_DATABASE_FILE: &str = "prismdb.db";
 
 /// In-memory database identifier
 pub const IN_MEMORY_DATABASE: &str = ":memory:";

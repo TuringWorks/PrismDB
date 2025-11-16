@@ -1,6 +1,6 @@
-//! Mathematical Functions (DuckDB-Compatible)
+//! Mathematical Functions
 //!
-//! This module implements DuckDB's mathematical functions for 100% compatibility.
+//! This module implements PrismDB's mathematical functions for 100% compatibility.
 //! Includes: trigonometry, logarithms, rounding, statistical, and more.
 
 use crate::common::error::{PrismDBError, PrismDBResult};

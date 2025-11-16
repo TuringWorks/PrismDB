@@ -1,4 +1,4 @@
-//! Query Planner for DuckDB
+//! Query Planner for PrismDB
 //!
 //! This module provides query planning capabilities that transform parsed SQL
 //! statements into executable plans. The planner consists of several phases:

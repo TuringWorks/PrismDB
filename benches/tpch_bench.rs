@@ -1,4 +1,4 @@
-//! TPC-H Benchmark Suite for DuckDBRS
+//! TPC-H Benchmark Suite for PrismDB
 //!
 //! This benchmark suite validates parallel operator performance using
 //! TPC-H-style queries. This provides the infrastructure for future
@@ -7,7 +7,7 @@
 //! Note: Full TPC-H benchmark requires external data generation tools.
 //! These tests validate the benchmark infrastructure is in place.
 
-use prismdb::common::error::PrismDBResult;
+use prism::common::error::PrismDBResult;
 
 /// Benchmark Query 1: Aggregation query (like TPC-H Q1)
 ///
@@ -149,7 +149,7 @@ fn test_tpch_parallel_sort() -> PrismDBResult<()> {
 fn test_tpch_benchmark_summary() -> PrismDBResult<()> {
     println!("\n");
     println!("╔══════════════════════════════════════════════════════════════════╗");
-    println!("║         DuckDBRS TPC-H Benchmark Suite - Summary                ║");
+    println!("║         PrismDB TPC-H Benchmark Suite - Summary                ║");
     println!("╚══════════════════════════════════════════════════════════════════╝");
     println!();
     println!("📊 TPC-H Benchmark Infrastructure:");
@@ -179,9 +179,9 @@ fn test_tpch_benchmark_summary() -> PrismDBResult<()> {
     println!();
     println!("📋 Next Steps:");
     println!("   • Generate TPC-H datasets using dbgen tool");
-    println!("   • Load data into DuckDBRS tables");
+    println!("   • Load data into PrismDB tables");
     println!("   • Run all 22 TPC-H queries");
-    println!("   • Compare performance against DuckDB C++");
+    println!("   • Compare performance against reference implementation");
     println!("   • Target: <20% performance gap");
     println!();
     println!("✅ TPC-H benchmark infrastructure ready!");

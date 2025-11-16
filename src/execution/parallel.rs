@@ -1,9 +1,9 @@
-//! Parallel Execution Framework for DuckDB-RS
+//! Parallel Execution Framework for PrismDB
 //!
-//! This module implements DuckDB's morsel-driven parallelism approach:
+//! This module implements PrismDB's morsel-driven parallelism approach:
 //! - Data is split into "morsels" (chunks) that can be processed in parallel
 //! - Uses Rayon for work-stealing thread pool
-//! - Maintains DuckDB's vectorized execution model
+//! - Maintains PrismDB's vectorized execution model
 //! - Implements parallel operators: Scan, Join, Aggregate
 
 use crate::common::error::PrismDBResult;
@@ -11,7 +11,7 @@ use crate::types::DataChunk;
 use rayon::prelude::*;
 use std::sync::{Arc, Mutex};
 
-/// Morsel size for parallel processing (DuckDB uses ~100K rows per morsel)
+/// Morsel size for parallel processing (PrismDB uses ~100K rows per morsel)
 pub const MORSEL_SIZE: usize = 102400;
 
 /// Parallel execution context

@@ -1,4 +1,4 @@
-//! Catalog System for DuckDB
+//! Catalog System for PrismDB
 //!
 //! This module provides the catalog system that manages database metadata
 //! including schemas, tables, views, indexes, and other database objects.

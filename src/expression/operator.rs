@@ -1,4 +1,4 @@
-//! Operator definitions and implementations for DuckDB expressions
+//! Operator definitions and implementations for PrismDB expressions
 
 use crate::common::error::{PrismDBError, PrismDBResult};
 use crate::types::Value;

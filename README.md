@@ -1,23 +1,18 @@
 # PrismDB
 
-<div align="center">
-
-**A high-performance analytical database system written in Rust**
+## A high-performance analytical database system written in Rust**
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
 [![Rust](https://img.shields.io/badge/rust-1.70%2B-orange.svg)](https://www.rust-lang.org/)
-
-</div>
 
 ## About
 
 PrismDB is a columnar analytical database system written entirely in Rust, inspired by the [DuckDB](https://duckdb.org/) architecture. It's designed as an educational project to understand and implement modern database internals while leveraging Rust's safety and performance features.
 
-**Note**: PrismDB is not file-format compatible with DuckDB. It's an independent implementation for learning and exploration purposes.
-
 ## Features
 
 ### Core Database Features
+
 - ✅ **Columnar Storage**: Efficient column-oriented data storage with compression
 - ✅ **SQL Support**: Comprehensive SQL query parsing and execution
 - ✅ **ACID Transactions**: Full transaction support with MVCC
@@ -25,6 +20,7 @@ PrismDB is a columnar analytical database system written entirely in Rust, inspi
 - ✅ **Vectorized Execution**: High-performance vectorized query execution engine
 
 ### Data Types
+
 - Integer types (INT, BIGINT, SMALLINT, TINYINT)
 - Floating-point types (REAL, DOUBLE, DECIMAL)
 - String types (VARCHAR, CHAR, TEXT)
@@ -33,6 +29,7 @@ PrismDB is a columnar analytical database system written entirely in Rust, inspi
 - Nested types (STRUCT, LIST, MAP, ARRAY)
 
 ### SQL Features
+
 - SELECT queries with WHERE, GROUP BY, HAVING, ORDER BY
 - JOIN operations (INNER, LEFT, RIGHT, FULL, CROSS)
 - Subqueries and Common Table Expressions (CTEs)
@@ -42,12 +39,14 @@ PrismDB is a columnar analytical database system written entirely in Rust, inspi
 - Date/time functions
 
 ### File Formats
+
 - CSV (read/write)
 - Parquet (read)
 - JSON (read)
 - SQLite (read)
 
 ### Advanced Features
+
 - HTTP/HTTPS file reading
 - S3 file reading with AWS Signature V4
 - Data compression (LZ4, ZSTD, Snappy)
@@ -157,7 +156,7 @@ cargo bench
 
 ### Project Structure
 
-```
+```text
 prismdb/
 ├── src/
 │   ├── catalog/      # Schema and metadata
@@ -207,4 +206,4 @@ PrismDB is an educational project and not intended for production use. For produ
 
 ---
 
-**Made with ❤️ and Rust**
+### Made with ❤️ and Rust

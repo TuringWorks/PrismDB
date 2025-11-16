@@ -1,4 +1,4 @@
-//! Aggregate function implementations for DuckDB expressions
+//! Aggregate function implementations for PrismDB expressions
 
 use crate::common::error::{PrismDBError, PrismDBResult};
 use crate::expression::{Expression, ExpressionRef};
@@ -774,7 +774,7 @@ impl AggregateState for ApproxQuantileState {
     }
 }
 
-/// STRING_AGG aggregate state - Concatenate strings with separator (DuckDB-compatible)
+/// STRING_AGG aggregate state - Concatenate strings with separator
 #[derive(Debug, Clone)]
 pub struct StringAggState {
     values: Vec<String>,
@@ -870,7 +870,7 @@ impl AggregateState for PercentileContState {
         let mut sorted = self.values.clone();
         sorted.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
 
-        // Calculate position (DuckDB-compatible formula)
+        // Calculate position
         let n = sorted.len() as f64;
         let pos = self.percentile * (n - 1.0);
         let lower_idx = pos.floor() as usize;
@@ -942,7 +942,7 @@ impl AggregateState for PercentileDiscState {
         let mut sorted = self.values.clone();
         sorted.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
 
-        // Calculate position (DuckDB-compatible formula for discrete)
+        // Calculate position and get the value at that index
         let n = sorted.len();
         let idx = ((self.percentile * (n as f64 - 1.0)).ceil() as usize).min(n - 1);
 
@@ -961,7 +961,7 @@ impl AggregateState for PercentileDiscState {
     }
 }
 
-/// COVAR_POP aggregate state - Population covariance (DuckDB-compatible)
+/// COVAR_POP aggregate state - Population covariance
 /// Uses Schubert and Gertz SSDBM 2018 algorithm
 #[derive(Debug, Clone)]
 pub struct CovarPopState {
@@ -1103,7 +1103,7 @@ impl AggregateState for CovarSampState {
     }
 }
 
-/// CORR aggregate state - Correlation coefficient (DuckDB-compatible)
+/// CORR aggregate state - Correlation coefficient (Pearson's r)
 /// CORR(y, x) = COVAR_POP(y, x) / (STDDEV_POP(x) * STDDEV_POP(y))
 #[derive(Debug, Clone)]
 pub struct CorrState {

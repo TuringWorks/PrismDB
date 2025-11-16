@@ -1,4 +1,4 @@
-//! Column data storage for DuckDB
+//! Column data storage for PrismDB
 //!
 //! This module provides column-level data storage with:
 //! - Type-specific storage optimization

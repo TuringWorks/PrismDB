@@ -208,7 +208,7 @@ impl ParquetReader {
                         let arr = array.as_any().downcast_ref::<arrow::array::TimestampNanosecondArray>()
                             .ok_or_else(|| PrismDBError::Internal("Failed to downcast to TimestampNanosecondArray".to_string()))?;
                         for i in 0..arr.len() {
-                            // Convert nanoseconds to microseconds (DuckDB uses microseconds)
+                            // Convert nanoseconds to microseconds (PrismDB uses microseconds)
                             values.push(if arr.is_null(i) { Value::Null } else { Value::Timestamp(arr.value(i) / 1000) });
                         }
                     }
@@ -246,7 +246,7 @@ impl ParquetReader {
         Ok(values)
     }
 
-    /// Convert Arrow data type to DuckDB logical type
+    /// Convert Arrow data type to PrismDB logical type
     fn arrow_type_to_logical_type(&self, arrow_type: &ArrowDataType) -> PrismDBResult<LogicalType> {
         match arrow_type {
             ArrowDataType::Boolean => Ok(LogicalType::Boolean),

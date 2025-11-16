@@ -89,8 +89,8 @@ impl JsonReader {
             for (col_idx, col_name) in column_names.iter().enumerate() {
                 let value = obj.get(col_name)
                     .unwrap_or(&serde_json::Value::Null);
-                let duck_value = self.convert_json_value(value, &column_types[col_idx])?;
-                all_columns[col_idx].push(duck_value);
+                let prism_value = self.convert_json_value(value, &column_types[col_idx])?;
+                all_columns[col_idx].push(prism_value);
             }
         }
 
@@ -179,7 +179,7 @@ impl JsonReader {
         Ok(types)
     }
 
-    /// Infer DuckDB logical type from JSON value
+    /// Infer PrismDB logical type from JSON value
     fn infer_json_type(&self, value: &serde_json::Value) -> PrismDBResult<LogicalType> {
         match value {
             serde_json::Value::Null => Ok(LogicalType::Varchar), // Default to VARCHAR for nullable
@@ -197,7 +197,7 @@ impl JsonReader {
         }
     }
 
-    /// Convert JSON value to DuckDB Value
+    /// Convert JSON value to PrismDB Value
     fn convert_json_value(&self, json_value: &serde_json::Value, expected_type: &LogicalType) -> PrismDBResult<Value> {
         match json_value {
             serde_json::Value::Null => Ok(Value::Null),

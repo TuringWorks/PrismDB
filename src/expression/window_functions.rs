@@ -1,4 +1,4 @@
-//! Window Functions (DuckDB-Compatible)
+//! Window Functions
 //!
 //! This module implements window functions for analytical queries.
 //! Includes: ROW_NUMBER, RANK, DENSE_RANK, LAG, LEAD, and value functions.

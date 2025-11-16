@@ -52,7 +52,7 @@
         "parameters": "arg1,arg2",
         "description": "Concatenates two strings, lists, or blobs. Any `NULL` input results in `NULL`. See also `concat(arg1, arg2, ...)` and `list_concat(list1, list2, ...)`.",
         "examples": [
-            "'Duck' || 'DB'",
+            "'Prism' || 'DB'",
             "[1, 2, 3] || [4, 5, 6]",
             "'\\xAA'::BLOB || '\\xBB'::BLOB"
         ],
@@ -366,7 +366,7 @@
         "name": "regexp_escape",
         "parameters": "string",
         "description": "Escapes special patterns to turn `string` into a regular expression similarly to Python's `re.escape` function.",
-        "example": "regexp_escape('https://duckdb.org')",
+        "example": "regexp_escape('https://prismdb.org')",
         "categories": ["regex"],
         "type": "scalar_function",
         "struct": "RegexpEscapeFun"

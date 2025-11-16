@@ -2,7 +2,7 @@
 //!
 //! Tests that verify expression binding works correctly throughout the query pipeline.
 
-use prismdb::{Database, DatabaseConfig, PrismDBResult};
+use prism::{Database, DatabaseConfig, PrismDBResult};
 
 #[test]
 fn test_database_creation() -> PrismDBResult<()> {
@@ -55,8 +55,8 @@ fn test_query_result_structure() -> PrismDBResult<()> {
 #[test]
 fn test_binding_infrastructure_exists() {
     // This test just verifies that the binding infrastructure compiles and is accessible
-    use prismdb::expression::binder::{BinderContext, ColumnBinding, ExpressionBinder};
-    use prismdb::types::LogicalType;
+    use prism::expression::binder::{BinderContext, ColumnBinding, ExpressionBinder};
+    use prism::types::LogicalType;
     use std::collections::HashMap;
 
     // Create a simple binder context
@@ -79,7 +79,7 @@ fn test_binding_infrastructure_exists() {
 #[test]
 fn test_optimizer_integration() -> PrismDBResult<()> {
     // Verify the optimizer can be created and accepts logical plans
-    use prismdb::planner::QueryOptimizer;
+    use prism::planner::QueryOptimizer;
 
     let _optimizer = QueryOptimizer::new();
 

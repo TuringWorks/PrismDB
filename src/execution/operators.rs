@@ -83,7 +83,7 @@ impl ExecutionOperator for SimpleDataChunkStream {
     }
 }
 
-/// Table scan operator (DuckDB-faithful implementation)
+/// Table scan operator (PrismDB-faithful implementation)
 /// Reads data from the storage layer
 pub struct TableScanOperator {
     scan: PhysicalTableScan,
@@ -95,7 +95,7 @@ impl TableScanOperator {
         Self { scan, context }
     }
 
-    /// Apply a pushed-down filter to a chunk using SelectionVector (DuckDB-faithful)
+    /// Apply a pushed-down filter to a chunk using SelectionVector (PrismDB-faithful)
     fn apply_filter_to_chunk(
         &self,
         chunk: DataChunk,
@@ -219,7 +219,7 @@ impl ExecutionOperator for TableScanOperator {
         let total_rows = table_data.row_count();
         let max_rows = self.scan.limit.unwrap_or(usize::MAX);
 
-        // DuckDB uses 2048 as the standard VECTOR_SIZE for chunk processing
+        // PrismDB uses 2048 as the standard VECTOR_SIZE for chunk processing
         const CHUNK_SIZE: usize = 2048;
 
         // Decide whether to use parallel execution
@@ -228,7 +228,7 @@ impl ExecutionOperator for TableScanOperator {
             && self.context.parallel_context.parallel_enabled;
 
         if use_parallel {
-            // PARALLEL EXECUTION PATH (DuckDB morsel-driven parallelism)
+            // PARALLEL EXECUTION PATH (PrismDB morsel-driven parallelism)
             let filters = self.scan.filters.clone();
             let table_data_clone = table_data_arc.clone();
             let context = self.context.clone();
@@ -268,7 +268,7 @@ impl ExecutionOperator for TableScanOperator {
                 // Use TableData's create_chunk method which efficiently reads from column storage
                 let mut chunk = table_data.create_chunk(offset, chunk_size)?;
 
-                // Apply pushed-down filters (DuckDB-faithful filter pushdown optimization)
+                // Apply pushed-down filters (PrismDB-faithful filter pushdown optimization)
                 if !self.scan.filters.is_empty() {
                     for filter_expr in &self.scan.filters {
                         chunk = self.apply_filter_to_chunk(chunk, filter_expr)?;
@@ -297,7 +297,7 @@ impl ExecutionOperator for TableScanOperator {
     }
 }
 
-/// Filter operator (DuckDB-faithful implementation)
+/// Filter operator (PrismDB-faithful implementation)
 /// Uses SelectionVector for zero-copy filtering
 pub struct FilterOperator {
     filter: PhysicalFilter,
@@ -310,7 +310,7 @@ impl FilterOperator {
     }
 
     /// Apply filter to a single chunk using SelectionVector
-    /// This is the core DuckDB pattern for efficient filtering
+    /// This is the core PrismDB pattern for efficient filtering
     fn apply_filter(&self, chunk: DataChunk) -> PrismDBResult<DataChunk> {
         use crate::common::error::PrismDBError;
         use crate::types::{SelectionVector, Value};
@@ -394,7 +394,7 @@ impl ExecutionOperator for FilterOperator {
     }
 }
 
-/// QUALIFY operator (DuckDB extension - filters on window function results)
+/// QUALIFY operator (PrismDB extension - filters on window function results)
 /// Applied after window functions are computed but before ORDER BY/LIMIT
 /// Very similar to Filter operator, but semantically operates after window computation
 pub struct QualifyOperator {
@@ -491,7 +491,7 @@ impl ExecutionOperator for QualifyOperator {
     }
 }
 
-/// Projection operator (DuckDB-faithful implementation)
+/// Projection operator (PrismDB-faithful implementation)
 /// Projects columns from the input stream
 pub struct ProjectionOperator {
     projection: PhysicalProjection,

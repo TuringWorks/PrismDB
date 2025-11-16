@@ -99,7 +99,7 @@
     },
     {
         "name": "arrow_lossless_conversion",
-        "description": "Whenever a DuckDB type does not have a clear native or canonical extension match in Arrow, export the types with a duckdb.type_name extension name.",
+        "description": "Whenever a PrismDB type does not have a clear native or canonical extension match in Arrow, export the types with a prismdb.type_name extension name.",
         "type": "BOOLEAN",
         "default_scope": "global",
         "default_value": "false"
@@ -114,7 +114,7 @@
     },
     {
         "name": "arrow_output_version",
-        "description": "Whether strings should be produced by DuckDB in Utf8View format instead of Utf8",
+        "description": "Whether strings should be produced by PrismDB in Utf8View format instead of Utf8",
         "type": "ENUM<ArrowFormatVersion>",
         "default_scope": "global",
         "default_value": "1.0"
@@ -182,7 +182,7 @@
     },
     {
         "name": "custom_user_agent",
-        "description": "Metadata from DuckDB callers",
+        "description": "Metadata from PrismDB callers",
         "type": "VARCHAR",
         "scope": "global",
         "custom_implementation": [
@@ -241,7 +241,7 @@
     },
     {
         "name": "default_block_size",
-        "description": "The default block size for new duckdb database files (new as-in, they do not yet exist).",
+        "description": "The default block size for new prismdb database files (new as-in, they do not yet exist).",
         "type": "UBIGINT",
         "scope": "global",
         "custom_implementation": true
@@ -288,7 +288,7 @@
     },
     {
         "name": "disable_database_invalidation",
-        "description": "Disables invalidating the database instance when encountering a fatal error. Should be used with great care, as DuckDB cannot guarantee correct behavior after a fatal error.",
+        "description": "Disables invalidating the database instance when encountering a fatal error. Should be used with great care, as PrismDB cannot guarantee correct behavior after a fatal error.",
         "type": "BOOLEAN",
         "scope": "global",
         "on_callbacks": [
@@ -333,12 +333,12 @@
         "custom_implementation": true
     },
     {
-        "name": "duckdb_api",
-        "description": "DuckDB API surface",
+        "name": "prismdb_api",
+        "description": "PrismDB API surface",
         "type": "VARCHAR",
         "scope": "global",
         "custom_implementation": true,
-        "struct": "DuckDBAPISetting"
+        "struct": "PrismDBAPISetting"
     },
     {
         "name": "dynamic_or_filter_threshold",
@@ -478,7 +478,7 @@
     },
     {
         "name": "external_threads",
-        "description": "The number of external threads that work on DuckDB tasks.",
+        "description": "The number of external threads that work on PrismDB tasks.",
         "type": "UBIGINT",
         "scope": "global",
         "on_callbacks": [
@@ -776,7 +776,7 @@
     },
     {
         "name": "produce_arrow_string_view",
-        "description": "Whether Arrow strings should be produced by DuckDB in Utf8View format instead of Utf8",
+        "description": "Whether Arrow strings should be produced by PrismDB in Utf8View format instead of Utf8",
         "type": "BOOLEAN",
         "default_scope": "global",
         "default_value": "false"
@@ -855,7 +855,7 @@
     },
     {
         "name": "storage_compatibility_version",
-        "description": "Serialize on checkpoint with compatibility for a given duckdb version",
+        "description": "Serialize on checkpoint with compatibility for a given prismdb version",
         "type": "VARCHAR",
         "scope": "global",
         "custom_implementation": true

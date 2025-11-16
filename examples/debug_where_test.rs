@@ -1,5 +1,5 @@
-use prismdb::common::error::PrismDBResult;
-use prismdb::database::{Database, DatabaseConfig};
+use prism::common::error::PrismDBResult;
+use prism::database::{Database, DatabaseConfig};
 
 fn main() -> PrismDBResult<()> {
     let db = Database::new(DatabaseConfig::in_memory())?;

@@ -2,8 +2,8 @@
 //!
 //! Tests for CTEs, Subqueries, and Set Operations
 
-use prismdb::{Database, PrismDBResult};
-use prismdb::types::Value;
+use prism::{Database, PrismDBResult};
+use prism::types::Value;
 
 /// Create test database with sample data
 fn create_test_db() -> PrismDBResult<Database> {
@@ -168,7 +168,7 @@ fn test_cte_used_multiple_times() -> PrismDBResult<()> {
 
     let collected = result.collect()?;
     assert_eq!(collected.rows.len(), 1);
-    assert_eq!(collected.rows[0][0], Value::bigint(3)); // count (BIGINT per DuckDB spec)
+    assert_eq!(collected.rows[0][0], Value::bigint(3)); // count (BIGINT per PrismDB spec)
     assert_eq!(collected.rows[0][1], Value::integer(95000)); // max
     assert_eq!(collected.rows[0][2], Value::integer(85000)); // min
 

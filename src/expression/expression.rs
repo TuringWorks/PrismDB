@@ -1,4 +1,4 @@
-//! Core expression types for DuckDB
+//! Core expression types for PrismDB
 
 use crate::common::error::{PrismDBError, PrismDBResult};
 use crate::types::{DataChunk, LogicalType, Value, Vector};

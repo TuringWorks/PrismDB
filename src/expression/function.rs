@@ -1,4 +1,4 @@
-//! Function definitions and implementations for DuckDB expressions
+//! Function definitions and implementations for PrismDB expressions
 
 use crate::common::error::{PrismDBError, PrismDBResult};
 use crate::types::{LogicalType, Value};
@@ -1818,7 +1818,7 @@ fn evaluate_random() -> PrismDBResult<Value> {
 }
 
 fn evaluate_version() -> PrismDBResult<Value> {
-    Ok(Value::Varchar("DuckDB Rust v0.1.0".to_string()))
+    Ok(Value::Varchar("PrismDB v0.1.0".to_string()))
 }
 
 #[cfg(test)]

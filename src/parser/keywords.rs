@@ -11,7 +11,7 @@ pub enum Keyword {
     Where,
     Group,
     Having,
-    Qualify,  // DuckDB: filter on window functions
+    Qualify,  //filter on window functions
     Order,
     By,
     Limit,
@@ -226,7 +226,7 @@ pub enum Keyword {
     Position,
     Concat,
 
-    // PIVOT/UNPIVOT keywords (DuckDB extension)
+    // PIVOT/UNPIVOT keywords
     Pivot,
     Unpivot,
     For,

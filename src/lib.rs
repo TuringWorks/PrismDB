@@ -1,7 +1,7 @@
 //! PrismDB - High Performance Analytical Database
 //!
-//! PrismDB is a high-performance analytical database inspired by DuckDB, maintaining high fidelity to original
-//! the DuckDB architecture while leveraging Rust's safety and performance features.
+//! PrismDB is a high-performance analytical database written in Rust,
+//! leveraging Rust's safety and performance features.
 //!
 pub mod catalog;
 pub mod common;

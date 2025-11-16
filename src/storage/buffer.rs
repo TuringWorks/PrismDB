@@ -1,4 +1,4 @@
-//! Buffer management for DuckDB storage engine
+//! Buffer management for PrismDB storage engine
 //!
 //! This module provides:
 //! - Memory buffer pool management

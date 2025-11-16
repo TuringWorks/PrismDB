@@ -1,0 +1,113 @@
+# PrismDB HTAP Extension Specification
+
+**Version:** 2.0.0
+**Target Release:** Q2 2026
+**Status:** Specification / Planning Phase
+
+---
+
+## Table of Contents
+
+1. [Executive Summary](#executive-summary)
+2. [HTAP Overview](#htap-overview)
+3. [Document Store Extension](#document-store-extension)
+4. [Enhanced Type System](#enhanced-type-system)
+5. [Vector Database Features](#vector-database-features)
+6. [Graph Database Features](#graph-database-features)
+7. [Architecture Changes](#architecture-changes)
+8. [Implementation Roadmap](#implementation-roadmap)
+9. [Performance Considerations](#performance-considerations)
+10. [Migration Strategy](#migration-strategy)
+
+---
+
+## Executive Summary
+
+This specification outlines the transformation of PrismDB from a pure OLAP database into a **Hybrid Transactional/Analytical Processing (HTAP)** system with support for:
+
+- **Document Store**: MongoDB-compatible document operations
+- **JSON/JSONB Types**: First-class JSON support with indexing
+- **Binary Types**: BLOB, BYTEA with compression
+- **Vector Database**: Embeddings storage and similarity search
+- **Graph Database**: Property graph model with traversal queries
+
+### Goals
+
+1. **Unified Platform**: Single database for OLTP, OLAP, documents, vectors, and graphs
+2. **MongoDB Compatibility**: Support MongoDB query language and wire protocol
+3. **Performance**: Maintain analytical performance while adding transactional capabilities
+4. **Flexibility**: Schema-on-read for documents, schema-on-write for tables
+5. **Modern AI/ML**: Native vector similarity search for embeddings
+
+### Non-Goals
+
+- Full MongoDB cluster compatibility (sharding, replica sets)
+- Real-time graph traversal at Neo4j scale (focus on analytical graph queries)
+- Replace specialized systems (use PrismDB as unified layer)
+
+---
+
+## HTAP Overview
+
+### What is HTAP?
+
+HTAP combines:
+
+- **OLTP** (Online Transaction Processing): Row-level operations, high concurrency, low latency
+- **OLAP** (Online Analytical Processing): Bulk operations, complex queries, high throughput
+
+### Architecture Approach
+
+```text
+┌──────────────────────────────────────────────────────────────────┐
+│                         Unified Storage Layer                    │
+├──────────────────────────────────────────────────────────────────┤
+│                                                                  │
+│  ┌─────────────────┐  ┌─────────────────┐  ┌─────────────────┐   │
+│  │   Row Store     │  │  Column Store   │  │  Hybrid Store   │   │
+│  │                 │  │                 │  │                 │   │
+│  │ • OLTP          │  │ • OLAP          │  │ • Hot Data      │   │
+│  │ • Transactions  │  │ • Analytics     │  │ • Recent Rows   │   │
+│  │ • Point Queries │  │ • Scans         │  │ • Auto-tiering  │   │
+│  └─────────────────┘  └─────────────────┘  └─────────────────┘   │
+│                                                                  │
+└──────────────────────────────────────────────────────────────────┘
+```
+
+### Hybrid Storage Strategy
+
+**Row Store**: Hot data (recent inserts/updates)
+
+- B+ tree indexing
+- MVCC for transactions
+- Low-latency point queries
+- Automatic conversion to columnar after time/size threshold
+
+**Column Store**: Cold data (analytical queries)
+
+- Existing PrismDB columnar storage
+- Compression and vectorized execution
+- Optimized for scans and aggregations
+
+**Data Flow**:
+
+```text
+INSERT → Row Store → Background Process → Column Store
+                          ↓
+                    Threshold-based:
+                    • Age > 1 hour
+                    • Size > 1MB
+                    • Manual trigger
+```
+
+---
+
+(continuing with full specification...)
+
+For the complete specification document, please see the full content above.
+
+---
+
+**Document Version**: 1.0
+**Status**: Specification / RFC
+**Next Review**: 2026-Q1

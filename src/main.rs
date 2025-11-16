@@ -1,16 +1,16 @@
-//! DuckDB Rust Port - Main Entry Point
+//! PrismDB - Main Entry Point
 //!
-//! This is the main entry point for the DuckDB Rust port CLI application.
+//! This is the main entry point for the PrismDB CLI application.
 
 use clap::Parser;
 use rustyline::error::ReadlineError;
 use rustyline::DefaultEditor;
 use std::process;
 
-use prismdb::Database;
+use prism::Database;
 
 fn run_interactive_mode(database: &Database) -> Result<(), Box<dyn std::error::Error>> {
-    println!("DuckDB Rust Port v{}", env!("CARGO_PKG_VERSION"));
+    println!("PrismDB v{}", env!("CARGO_PKG_VERSION"));
     println!("Enter '.help' for usage hints.");
     println!("Enter SQL statements terminated with a semicolon (;)");
     println!();
@@ -19,10 +19,10 @@ fn run_interactive_mode(database: &Database) -> Result<(), Box<dyn std::error::E
     let mut rl = DefaultEditor::new()?;
     let history_file = dirs::home_dir()
         .map(|mut path| {
-            path.push(".duckdb_history");
+            path.push(".prismdb_history");
             path
         })
-        .unwrap_or_else(|| std::path::PathBuf::from(".duckdb_history"));
+        .unwrap_or_else(|| std::path::PathBuf::from(".prismdb_history"));
 
     // Load history if it exists
     let _ = rl.load_history(&history_file);
@@ -31,9 +31,9 @@ fn run_interactive_mode(database: &Database) -> Result<(), Box<dyn std::error::E
 
     loop {
         let prompt = if sql_buffer.is_empty() {
-            "duckdb> "
+            "prismdb> "
         } else {
-            "      -> "
+            "       -> "
         };
 
         match rl.readline(prompt) {
@@ -155,7 +155,7 @@ fn handle_special_command(
             Ok(false)
         }
         ".version" => {
-            println!("DuckDB Rust Port v{}", env!("CARGO_PKG_VERSION"));
+            println!("PrismDB v{}", env!("CARGO_PKG_VERSION"));
             Ok(false)
         }
         ".mode" => {
@@ -319,8 +319,8 @@ fn dump_database(database: &Database, table_name: Option<&str>) {
     }
 }
 
-fn format_type(ty: &duckdb::LogicalType) -> &str {
-    use prismdb::LogicalType;
+fn format_type(ty: &prism::LogicalType) -> &str {
+    use prism::LogicalType;
     match ty {
         LogicalType::Boolean => "BOOLEAN",
         LogicalType::TinyInt => "TINYINT",
@@ -336,8 +336,8 @@ fn format_type(ty: &duckdb::LogicalType) -> &str {
     }
 }
 
-fn format_value_sql(value: &duckdb::Value) -> String {
-    use prismdb::Value;
+fn format_value_sql(value: &prism::Value) -> String {
+    use prism::Value;
     match value {
         Value::Null => "NULL".to_string(),
         Value::Varchar(s) | Value::Char(s) => format!("'{}'", s.replace("'", "''")),
@@ -422,8 +422,8 @@ fn execute_sql(database: &Database, sql: &str, settings: &Settings) -> Result<()
 }
 
 #[derive(Parser)]
-#[command(name = "duckdb")]
-#[command(about = "DuckDB Rust Port - High Performance Analytical Database")]
+#[command(name = "prism")]
+#[command(about = "PrismDB - High Performance Analytical Database")]
 #[command(version = env!("CARGO_PKG_VERSION"))]
 struct Cli {
     /// Database file path (in-memory if not specified)
@@ -447,7 +447,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let cli = Cli::parse();
 
     if cli.verbose {
-        println!("DuckDB Rust Port v{}", env!("CARGO_PKG_VERSION"));
+        println!("PrismDB v{}", env!("CARGO_PKG_VERSION"));
     }
 
     // Initialize database

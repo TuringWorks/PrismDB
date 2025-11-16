@@ -1,5 +1,5 @@
-use prismdb::PrismDBResult;
-use prismdb::database::{Database, DatabaseConfig};
+use prism::PrismDBResult;
+use prism::database::{Database, DatabaseConfig};
 use tempfile::tempdir;
 
 #[test]

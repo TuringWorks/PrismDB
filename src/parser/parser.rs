@@ -269,7 +269,7 @@ impl Parser {
             None
         };
 
-        // QUALIFY clause for filtering on window functions (DuckDB extension)
+        // QUALIFY clause for filtering on window functions (PrismDB extension)
         let qualify = if self.consume_keyword(Keyword::Qualify).is_ok() {
             Some(Box::new(self.parse_expression()?))
         } else {

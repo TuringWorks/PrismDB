@@ -1,6 +1,6 @@
-//! String Functions (DuckDB-Compatible)
+//! String Functions
 //!
-//! This module implements DuckDB's string manipulation functions for 100% compatibility.
+//! This module implements PrismDB's string manipulation functions for 100% compatibility.
 //! Includes: manipulation, search, formatting, splitting, pattern matching, and more.
 
 use crate::common::error::{PrismDBError, PrismDBResult};
@@ -146,7 +146,7 @@ pub fn strpos(value: &Value, substring: &Value) -> PrismDBResult<Value> {
     position(substring, value)
 }
 
-/// INSTR - Find position of substring (1-based, 0 if not found) - DuckDB alias
+/// INSTR - Find position of substring (1-based, 0 if not found) - PrismDB alias
 pub fn instr(value: &Value, substring: &Value) -> PrismDBResult<Value> {
     position(substring, value)
 }
@@ -909,7 +909,7 @@ pub fn printf(template: &Value, args: &[Value]) -> PrismDBResult<Value> {
 }
 
 // ============================================================================
-// String Similarity Functions (DuckDB-Compatible)
+// String Similarity Functions
 // ============================================================================
 
 /// JARO_SIMILARITY - Calculate Jaro similarity between two strings
@@ -981,7 +981,7 @@ pub fn hamming(s1: &Value, s2: &Value) -> PrismDBResult<Value> {
 }
 
 // ============================================================================
-// Advanced Regex Functions (DuckDB-Compatible)
+// Advanced Regex Functions
 // ============================================================================
 
 /// REGEXP_SPLIT_TO_ARRAY - Split a string by a regular expression pattern

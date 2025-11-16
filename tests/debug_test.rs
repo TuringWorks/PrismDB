@@ -1,5 +1,5 @@
-use prismdb::Database;
-use prismdb::PrismDBResult;
+use prism::Database;
+use prism::PrismDBResult;
 
 #[test]
 fn test_basic_create() -> PrismDBResult<()> {

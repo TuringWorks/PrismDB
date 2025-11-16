@@ -4,10 +4,10 @@ use crate::common::error::Result;
 use std::alloc::{GlobalAlloc, Layout, System};
 use std::ptr::NonNull;
 
-/// Custom allocator for DuckDB memory management
-pub struct DuckDBAllocator;
+/// Custom allocator for PrismDB memory management
+pub struct PrismDBAllocator;
 
-unsafe impl GlobalAlloc for DuckDBAllocator {
+unsafe impl GlobalAlloc for PrismDBAllocator {
     unsafe fn alloc(&self, layout: Layout) -> *mut u8 {
         System.alloc(layout)
     }

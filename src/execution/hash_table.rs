@@ -1,6 +1,6 @@
 //! High-Performance Parallel Hash Table for Joins
 //!
-//! This module implements DuckDB's parallel hash table design:
+//! This module implements PrismDB's parallel hash table design:
 //! - Partitioned hash table with thread-local build
 //! - Lock-free probe phase after build completes
 //! - Linear probing for cache efficiency
@@ -26,7 +26,7 @@ use std::hash::{Hash, Hasher};
 use std::sync::RwLock;
 
 /// Number of partitions for parallel hash table
-/// DuckDB uses power-of-2 partitioning for efficient modulo via bitwise AND
+/// Power-of-2 partitioning for efficient modulo via bitwise AND
 pub const NUM_PARTITIONS: usize = 256;
 
 /// Hash table entry - represents one row in the hash table

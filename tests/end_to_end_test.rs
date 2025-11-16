@@ -5,12 +5,12 @@
 //! 2. INSERT - Inserts data into the table
 //! 3. SELECT - Reads the data back and verifies correctness
 
-use prismdb::catalog::Catalog;
-use prismdb::execution::pipeline::TableScanSource;
-use prismdb::execution::{ExecutionContext, ExecutionEngine};
-use prismdb::planner::{PhysicalColumn, PhysicalCreateTable, PhysicalPlan, PhysicalTableScan};
-use prismdb::storage::TransactionManager;
-use prismdb::types::{LogicalType, Value};
+use prism::catalog::Catalog;
+use prism::execution::pipeline::TableScanSource;
+use prism::execution::{ExecutionContext, ExecutionEngine};
+use prism::planner::{PhysicalColumn, PhysicalCreateTable, PhysicalPlan, PhysicalTableScan};
+use prism::storage::TransactionManager;
+use prism::types::{LogicalType, Value};
 use std::sync::{Arc, RwLock};
 
 #[test]
@@ -208,7 +208,7 @@ fn test_create_table_if_not_exists() -> Result<(), Box<dyn std::error::Error>> {
 
 #[test]
 fn test_drop_table() -> Result<(), Box<dyn std::error::Error>> {
-    use prismdb::planner::PhysicalDropTable;
+    use prism::planner::PhysicalDropTable;
 
     println!("\n=== Testing DROP TABLE ===\n");
 

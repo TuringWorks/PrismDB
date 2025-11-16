@@ -1,6 +1,6 @@
 /// Compression types supported by the storage engine
 ///
-/// DuckDBRS implements a subset of DuckDB's compression algorithms,
+/// PrismDB implements a subset of compression algorithms,
 /// focusing on the most impactful ones for typical workloads.
 use serde::{Deserialize, Serialize};
 

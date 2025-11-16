@@ -446,7 +446,7 @@ impl Binder {
             }
         }
 
-        // Bind QUALIFY (DuckDB extension - filter on window function results)
+        // Bind QUALIFY (PrismDB extension - filter on window function results)
         // QUALIFY is applied after window functions are computed, but before ORDER BY
         if let Some(qualify_expr) = &select.qualify {
             let predicate = self.convert_ast_expression(qualify_expr)?;

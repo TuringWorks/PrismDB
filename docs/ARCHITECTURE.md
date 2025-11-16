@@ -1,1146 +1,700 @@
-# DuckDBRS Architecture & Specifications
+# PrismDB Architecture
 
-**Version**: 0.1.0
-**Last Updated**: 2025-11-14
-**Language**: Rust 1.70+
-
-This document provides a comprehensive overview of the DuckDBRS architecture, design principles, and implementation details.
-
----
+**Version:** 0.1.0
+**Last Updated:** November 2025
+**Status:** Active Development
 
 ## Table of Contents
 
-1. [System Overview](#1-system-overview)
-2. [Architecture Layers](#2-architecture-layers)
-3. [Component Details](#3-component-details)
-4. [Data Flow](#4-data-flow)
-5. [Design Patterns](#5-design-patterns)
-6. [Performance Characteristics](#6-performance-characteristics)
-7. [Memory Management](#7-memory-management)
-8. [Concurrency Model](#8-concurrency-model)
-9. [Extension Points](#9-extension-points)
-10. [Security Considerations](#10-security-considerations)
-11. [Known Limitations](#11-known-limitations)
+1. [Overview](#overview)
+2. [System Architecture](#system-architecture)
+3. [Core Components](#core-components)
+4. [Data Flow](#data-flow)
+5. [Storage Engine](#storage-engine)
+6. [Query Processing](#query-processing)
+7. [Transaction Management](#transaction-management)
+8. [Extension System](#extension-system)
+9. [Performance Optimizations](#performance-optimizations)
 
 ---
 
-## 1. System Overview
+## Overview
 
-### 1.1 High-Level Architecture
+PrismDB is a high-performance analytical database system written in Rust, designed for OLAP (Online Analytical Processing) workloads. The system follows a columnar storage architecture with vectorized execution, enabling efficient analytical query processing.
+
+### Design Principles
+
+- **Columnar Storage**: Data organized by columns for better compression and cache efficiency
+- **Vectorized Execution**: Process data in batches (vectors) using SIMD operations
+- **Zero-Copy Operations**: Minimize data copying through smart memory management
+- **Morsel-Driven Parallelism**: Work-stealing scheduler for parallel query execution
+- **ACID Compliance**: Full transaction support with MVCC (Multi-Version Concurrency Control)
+
+### Key Features
+
+- SQL query support with comprehensive SQL-92 compliance
+- Columnar storage with adaptive compression
+- Vectorized query execution engine
+- Parallel query processing
+- ACID transactions with MVCC
+- Support for CSV, Parquet, JSON, and SQLite data sources
+- In-memory and persistent storage modes
+
+---
+
+## System Architecture
 
 ```text
 ┌─────────────────────────────────────────────────────────────┐
-│                      User Application                       │
-└──────────────────────┬──────────────────────────────────────┘
-                       │ SQL Query
-                       ▼
+│                         Client API                          │
+│                    (SQL Interface / CLI)                    │
+└─────────────────────────────────────────────────────────────┘
+                              │
+                              ▼
 ┌─────────────────────────────────────────────────────────────┐
-│                     SQL Frontend                            │
-│  ┌───────────┐   ┌───────────┐   ┌──────────┐               │
-│  │ Tokenizer │──▶│  Parser   │──▶│  Binder  │               │
-│  └───────────┘   └───────────┘   └──────────┘               │
-└──────────────────────┬──────────────────────────────────────┘
-                       │ Abstract Syntax Tree (AST)
-                       ▼
+│                         Parser Layer                        │
+│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐       │
+│  │  Tokenizer   │→ │    Parser    │→ │     AST      │       │
+│  └──────────────┘  └──────────────┘  └──────────────┘       │
+└─────────────────────────────────────────────────────────────┘
+                              │
+                              ▼
 ┌─────────────────────────────────────────────────────────────┐
-│                    Query Optimizer                          │
-│  ┌──────────────┐   ┌───────────────┐   ┌──────────-──┐     │
-│  │Logical Plan  │──▶│  Optimizer    │──▶│Physical Plan│     │
-│  └──────────────┘   └───────────────┘   └───────────-─┘     │
-└──────────────────────┬──────────────────────────────────────┘
-                       │ Optimized Physical Plan
-                       ▼
+│                        Binder Layer                         │
+│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐       │
+│  │   Catalog    │← │    Binder    │→ │   Semantic   │       │
+│  │   Lookup     │  │              │  │   Analysis   │       │
+│  └──────────────┘  └──────────────┘  └──────────────┘       │
+└─────────────────────────────────────────────────────────────┘
+                              │
+                              ▼
 ┌─────────────────────────────────────────────────────────────┐
-│                  Execution Engine                           │
-│  ┌───────────────┐   ┌──────────────┐   ┌────────────┐      │
-│  │   Operators   │──▶│  Pipelines   │──▶│ Parallelism│      │
-│  └───────────────┘   └──────────────┘   └────────────┘      │
-└──────────────────────┬──────────────────────────────────────┘
-                       │ Data Chunks
-                       ▼
+│                        Planner Layer                        │
+│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐       │
+│  │   Logical    │→ │  Optimizer   │→ │   Physical   │       │
+│  │     Plan     │  │              │  │     Plan     │       │
+│  └──────────────┘  └──────────────┘  └──────────────┘       │
+└─────────────────────────────────────────────────────────────┘
+                              │
+                              ▼
 ┌─────────────────────────────────────────────────────────────┐
-│                   Storage Layer                             │
-│  ┌────────────┐   ┌──────────────┐   ┌─────────────┐        │
-│  │  Catalog   │   │   Buffers    │   │Transaction  │        │
-│  └────────────┘   └──────────────┘   └─────────────┘        │
+│                      Execution Engine                       │
+│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐       │
+│  │  Vectorized  │  │   Parallel   │  │  Operators   │       │
+│  │  Execution   │  │   Scheduler  │  │   (Hash/     │       │
+│  │              │  │              │  │   Sort/Join) │       │
+│  └──────────────┘  └──────────────┘  └──────────────┘       │
+└─────────────────────────────────────────────────────────────┘
+                              │
+                              ▼
+┌─────────────────────────────────────────────────────────────┐
+│                       Storage Layer                         │
+│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐       │
+│  │    Buffer    │  │    Column    │  │ Transaction  │       │
+│  │   Manager    │  │    Store     │  │   Manager    │       │
+│  └──────────────┘  └──────────────┘  └──────────────┘       │
+│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐       │
+│  │ Compression  │  │     WAL      │  │    Block     │       │
+│  │   Engine     │  │   Manager    │  │   Manager    │       │
+│  └──────────────┘  └──────────────┘  └──────────────┘       │
 └─────────────────────────────────────────────────────────────┘
 ```
 
-### 1.2 Core Principles
-
-1. **Vectorized Execution**: Process data in batches (chunks) of 2048 rows
-2. **Columnar Storage**: Store data column-wise for better cache locality
-3. **Zero-Copy**: Minimize data copying through shared references
-4. **Type Safety**: Leverage Rust's type system for correctness
-5. **Parallel Processing**: Use Rayon for morsel-driven parallelism
-6. **Expression-Based**: Everything is an expression for flexibility
-
-### 1.3 Technology Stack
-
-| Component | Technology | Rationale |
-|-----------|-----------|-----------|
-| Core Language | Rust 1.70+ | Memory safety, performance |
-| Parallelism | Rayon | Work-stealing, thread pool |
-| Date/Time | chrono | Robust datetime handling |
-| Regex | regex | High-performance patterns |
-| Serialization | serde (planned) | Data interchange |
-| Testing | cargo test | Integrated testing |
-
 ---
 
-## 2. Architecture Layers
+## Core Components
 
-### 2.1 Frontend Layer
+### 1. Parser (`src/parser/`)
 
-**Responsibility**: Parse SQL into executable structures
+**Purpose**: Transform SQL text into Abstract Syntax Tree (AST)
 
 **Components**:
 
-- **Tokenizer** (`src/parser/tokenizer.rs`): Lexical analysis
-- **Parser** (`src/parser/parser.rs`): Syntax analysis
-- **AST** (`src/parser/ast.rs`): Abstract Syntax Tree
+- **Tokenizer** (`tokenizer.rs`): Breaks SQL text into tokens
+- **Parser** (`parser.rs`): Builds AST from tokens using recursive descent parsing
+- **Keywords** (`keywords.rs`): SQL keyword definitions and extensions
+- **AST** (`ast.rs`): Abstract syntax tree node definitions
 
-**Key Design Decisions**:
+**Supported SQL Features**:
 
-- Recursive descent parser for SQL
-- Token-based approach with lookahead
-- Separate AST for each SQL construct
-- Support for DuckDB-specific extensions (PIVOT, QUALIFY, etc.)
+- DDL: CREATE TABLE, DROP TABLE, ALTER TABLE
+- DML: SELECT, INSERT, UPDATE, DELETE
+- Advanced: CTEs, Window Functions, QUALIFY, PIVOT/UNPIVOT
+- Set Operations: UNION, INTERSECT, EXCEPT
 
-**Performance Characteristics**:
+### 2. Catalog (`src/catalog/`)
 
-- **Parsing Speed**: ~1M tokens/sec
-- **Memory Overhead**: ~100 bytes per AST node
-- **Error Recovery**: Fail-fast with descriptive errors
-
-### 2.2 Binding Layer
-
-**Responsibility**: Resolve references and validate semantics
+**Purpose**: Metadata management for database objects
 
 **Components**:
 
-- **Expression Binder** (`src/expression/binder.rs`): Resolve column references
-- **Catalog** (`src/catalog/`): Schema metadata
-- **Type Resolver**: Infer and validate types
+- **Schema** (`schema.rs`): Database schema management
+- **Table** (`table.rs`): Table metadata and structure
+- **View** (`view.rs`): View definitions
+- **Function** (`function.rs`): User-defined function registry
+- **Index** (`index.rs`): Index metadata
+- **Transaction** (`transaction.rs`): Transaction-scoped catalog changes
 
-**Key Design Decisions**:
+**Metadata Stored**:
 
-- Two-phase binding: column resolution, then type checking
-- Schema-qualified names support (database.schema.table)
-- Lazy binding for subqueries
-- Type coercion rules matching PostgreSQL
+- Table schemas (columns, types, constraints)
+- View definitions
+- Function signatures
+- Index structures
+- Statistics for query optimization
 
-**Validation Steps**:
+### 3. Planner (`src/planner/`)
 
-1. Resolve table references
-2. Resolve column references
-3. Validate function signatures
-4. Check type compatibility
-5. Bind aggregate/window expressions
-
-### 2.3 Optimization Layer
-
-**Responsibility**: Transform queries for efficient execution
+**Purpose**: Query optimization and plan generation
 
 **Components**:
 
-- **Logical Planner** (`src/planner/logical_plan.rs`): Logical operators
-- **Optimizer** (`src/planner/optimizer.rs`): Query optimization
-- **Physical Planner** (`src/planner/physical_plan.rs`): Execution plan
+- **Binder** (`binder.rs`): Semantic analysis and name resolution
+- **Logical Plan** (`logical_plan.rs`): Relational algebra representation
+- **Optimizer** (`optimizer.rs`): Rule-based and cost-based optimization
+- **Physical Plan** (`physical_plan.rs`): Executable operator tree
 
-**Optimization Rules**:
+**Optimization Strategies**:
 
-1. **Filter Pushdown**: Move filters close to data source
-2. **Projection Pushdown**: Eliminate unused columns early
-3. **Predicate Simplification**: Constant folding, boolean algebra
-4. **Join Elimination**: Remove unnecessary joins
-5. **Common Subexpression Elimination**: (Planned)
+- **Filter Pushdown**: Move filters closer to data sources
+- **Projection Pushdown**: Only read required columns
+- **Constant Folding**: Evaluate constants at compile time
+- **Join Reordering**: Optimize join order based on cardinality
+- **Limit Pushdown**: Early termination for LIMIT queries
 
-**Cost Model**:
+### 4. Execution Engine (`src/execution/`)
 
-```rust
-Cost = (Rows × CostPerRow) + (Columns × CostPerColumn) + FixedCost
-```
+**Purpose**: Execute physical query plans
 
-### 2.4 Execution Layer
-
-**Responsibility**: Execute physical plans and return results
+**Architecture**: Morsel-driven parallel execution
 
 **Components**:
 
-- **Operators** (`src/execution/operators.rs`): Physical operators
-- **Pipeline** (`src/execution/pipeline.rs`): Operator pipelines
-- **Parallel Operators** (`src/execution/parallel_operators.rs`): Multi-threaded execution
+- **Operators** (`operators.rs`): Core query operators
+  - Scan (Table, Index)
+  - Filter, Project
+  - Hash Join, Sort-Merge Join
+  - Hash Aggregate
+  - Sort, Limit
+  - Union, Intersect, Except
 
-**Execution Model**: Volcano/Iterator model with vectorization
+- **Parallel Execution** (`parallel.rs`):
+  - Morsel size: ~100K rows per work unit
+  - Work-stealing scheduler using Rayon
+  - Lock-free data structures for coordination
 
-**Key Operators**:
+- **Hash Table** (`hash_table.rs`):
+  - Partitioned hash tables for parallel building
+  - Probe optimization with SIMD
+  - Spill-to-disk for large datasets (planned)
 
-- **TableScan**: Read data from storage
-- **Filter**: Apply predicates
-- **Project**: Compute expressions
-- **HashJoin**: Join using hash tables
-- **HashAggregate**: Group and aggregate
-- **Sort**: Order results
-- **Limit**: Result pagination
+**Vectorization**:
 
-### 2.5 Storage Layer
+- Process data in batches (DataChunks)
+- Typical vector size: 2048 rows
+- SIMD operations where applicable
+- Null-aware processing with validity masks
 
-**Responsibility**: Manage data persistence and retrieval
+### 5. Storage Engine (`src/storage/`)
+
+**Purpose**: Persistent and in-memory data storage
 
 **Components**:
 
-- **Table Manager** (`src/storage/table_manager.rs`): Table metadata
-- **Buffer Manager** (`src/storage/buffer_manager.rs`): Memory management
-- **Transaction Manager** (`src/storage/transaction.rs`): ACID properties
+#### Buffer Manager (`buffer.rs`)
 
-**Storage Format**:
+- **Memory Pool**: Reusable buffer allocation
+- **Page Management**: 4KB pages with LRU eviction
+- **Memory Limit**: Configurable memory bounds
+
+#### Column Store (`column.rs`)
+
+- **Columnar Layout**: Each column stored separately
+- **Type-specific Storage**: Optimized per data type
+- **Statistics**: Min/max, null count, distinct count
+
+#### Compression Engine (`compression/`)
+
+- **Dictionary Encoding**: For low-cardinality columns
+- **Run-Length Encoding (RLE)**: For repeated values
+- **Adaptive Selection**: Automatic compression method selection
+- **Analyze Phase**: Sample data to choose best compression
+
+#### Block Manager (`block_manager.rs`)
+
+- **Block Size**: 256KB blocks (like DuckDB)
+- **Free Block Management**: Bitmap-based allocation
+- **Block Metadata**: Headers with compression info
+
+#### Transaction Manager (`transaction.rs`)
+
+- **MVCC**: Multi-version concurrency control
+- **Isolation Levels**: Read Uncommitted, Read Committed, Repeatable Read, Serializable
+- **Snapshot Isolation**: Point-in-time consistent reads
+- **Transaction IDs**: Monotonically increasing
+
+#### Write-Ahead Log (`wal.rs`)
+
+- **Durability**: Persist changes before commit
+- **Recovery**: Replay log on restart
+- **Checkpointing**: Periodic log truncation
+- **Redo/Undo Logging**: For crash recovery
+
+### 6. Type System (`src/types/`)
+
+**Purpose**: Type definitions and operations
+
+**Components**:
+
+- **Logical Types** (`logical_type.rs`): User-facing types
+  - Numeric: INT, BIGINT, FLOAT, DOUBLE, DECIMAL
+  - String: VARCHAR, CHAR, TEXT
+  - Temporal: DATE, TIME, TIMESTAMP
+  - Boolean: BOOLEAN
+  - Nested: STRUCT, LIST, MAP, ARRAY
+
+- **Physical Types** (`physical_type.rs`): Internal representation
+  - Fixed-size vs. variable-size
+  - Alignment requirements
+  - In-memory layout
+
+- **Value** (`value.rs`): Runtime value representation
+  - Type-tagged union
+  - Null handling
+  - Casting and coercion
+
+- **Vector** (`vector.rs`): Columnar data batch
+  - Flat vectors: Contiguous storage
+  - Constant vectors: Single value repeated
+  - Dictionary vectors: Indices + dictionary
+  - Selection vectors: Filtered indices
+
+- **DataChunk** (`data_chunk.rs`): Multi-column vector batch
+  - Horizontal row representation
+  - Vectorized processing unit
+  - Memory-efficient iteration
+
+### 7. Expression System (`src/expression/`)
+
+**Purpose**: Expression evaluation and functions
+
+**Components**:
+
+- **Expressions** (`expression.rs`): Expression tree nodes
+  - Column references
+  - Constants
+  - Function calls
+  - Operators
+  - Casts
+
+- **Functions**:
+  - **Scalar Functions** (`function.rs`): Row-by-row operations
+  - **Aggregate Functions** (`aggregate.rs`): Multi-row reduction
+  - **Window Functions** (`window_functions.rs`): Ordered window operations
+  - **Math Functions** (`math_functions.rs`): Mathematical operations
+  - **String Functions** (`string_functions.rs`): String manipulation
+  - **Date/Time Functions** (`datetime_functions.rs`): Temporal operations
+
+- **Operators** (`operator.rs`):
+  - Arithmetic: +, -, *, /, %
+  - Comparison: =, !=, <, >, <=, >=
+  - Logical: AND, OR, NOT
+  - String: LIKE, CONCAT
+
+### 8. Extensions (`src/extensions/`)
+
+**Purpose**: External data sources and plugins
+
+**File Readers**:
+
+- **CSV** (`csv_reader.rs`): Delimiter-separated values
+- **Parquet** (`parquet_reader.rs`): Columnar file format
+- **JSON** (`json_reader.rs`): JSON documents
+- **SQLite** (`sqlite_reader.rs`): SQLite database files
+
+**Extension Management** (`mod.rs`):
+
+- Extension discovery and loading
+- Configuration management
+- Secret management for credentials
+
+**Cloud Integration**:
+
+- **AWS Signature** (`aws_signature.rs`): S3 authentication
+- HTTP/HTTPS file reading
+- Streaming data ingestion
+
+---
+
+## Data Flow
+
+### Query Execution Flow
 
 ```text
+SQL Query
+   │
+   ├─→ Tokenization
+   │      └─→ Tokens
+   │
+   ├─→ Parsing
+   │      └─→ AST
+   │
+   ├─→ Binding
+   │      ├─→ Catalog Lookup
+   │      ├─→ Type Resolution
+   │      └─→ Semantic Validation
+   │
+   ├─→ Logical Planning
+   │      └─→ Relational Algebra Tree
+   │
+   ├─→ Optimization
+   │      ├─→ Rule-based Optimization
+   │      ├─→ Cost-based Optimization
+   │      └─→ Optimized Logical Plan
+   │
+   ├─→ Physical Planning
+   │      ├─→ Operator Selection
+   │      ├─→ Join Strategy
+   │      └─→ Physical Operator Tree
+   │
+   ├─→ Execution
+   │      ├─→ Pipeline Breakers (Sort, Hash Build)
+   │      ├─→ Parallel Execution
+   │      ├─→ Vectorized Processing
+   │      └─→ Data Streaming
+   │
+   └─→ Result Set
+         └─→ DataChunk Iterator
+```
 
-Table File Structure:
-┌──────────────────┐
-│  File Header     │  Metadata (version, schema)
-├──────────────────┤
-│  Segment 1       │  ~122,880 rows (60 × 2048)
-│  ┌────────────┐  │
-│  │  Chunk 1   │  │  2048 rows
-│  │  Chunk 2   │  │  2048 rows
-│  │   ...      │  │
-│  │  Chunk 60  │  │  2048 rows
-│  └────────────┘  │
-├──────────────────┤
-│  Segment 2       │
-├──────────────────┤
-│     ...          │
-└──────────────────┘
+### Data Storage Flow
+
+```text
+INSERT/UPDATE
+   │
+   ├─→ Transaction Begin
+   │      └─→ Get Transaction ID
+   │
+   ├─→ Write to WAL
+   │      ├─→ Log Entry Creation
+   │      └─→ Force to Disk
+   │
+   ├─→ Update In-Memory Data
+   │      ├─→ Add to Buffer Pool
+   │      ├─→ MVCC Version Creation
+   │      └─→ Update Statistics
+   │
+   ├─→ Transaction Commit
+   │      ├─→ Visibility Update
+   │      └─→ WAL Checkpoint (periodic)
+   │
+   └─→ Background Tasks
+         ├─→ Compression
+         ├─→ Statistics Update
+         └─→ Vacuum (cleanup old versions)
 ```
 
 ---
 
-## 3. Component Details
+## Storage Engine
 
-### 3.1 Data Types System
-
-**Type Hierarchy**:
-
-```rust
-pub enum LogicalType {
-    Boolean,
-    TinyInt,   // i8
-    SmallInt,  // i16
-    Integer,   // i32
-    BigInt,    // i64
-    Float,     // f32
-    Double,    // f64
-    Decimal(u8, u8),  // precision, scale
-    Varchar,
-    Date,      // Days since epoch
-    Time,      // Microseconds since midnight
-    Timestamp, // Microseconds since epoch
-}
-```
-
-**Value Representation**:
-
-```rust
-pub enum Value {
-    Null,
-    Boolean(bool),
-    Integer(i32),
-    BigInt(i64),
-    Float(f32),
-    Double(f64),
-    Varchar(String),
-    Date(i32),         // Days since 1970-01-01
-    Time(i64),         // Microseconds since midnight
-    Timestamp(i64),    // Microseconds since epoch
-}
-```
-
-**Vector Storage**:
-
-```rust
-pub struct Vector {
-    data: Vec<Value>,      // Actual values
-    validity: BitVec,      // NULL bitmap
-    logical_type: LogicalType,
-}
-```
-
-### 3.2 Expression System
-
-**Expression Trait**:
-
-```rust
-pub trait Expression: Debug + Send + Sync {
-    fn return_type(&self) -> &LogicalType;
-    fn evaluate(&self, chunk: &DataChunk) -> DuckDBResult<Vector>;
-    fn evaluate_row(&self, chunk: &DataChunk, row_idx: usize) -> DuckDBResult<Value>;
-    fn is_deterministic(&self) -> bool;
-    fn is_nullable(&self) -> bool;
-}
-```
-
-**Expression Types**:
-
-- **ConstantExpression**: Literal values
-- **ColumnRefExpression**: Column references
-- **FunctionExpression**: Function calls
-- **ComparisonExpression**: Binary comparisons
-- **CastExpression**: Type conversions
-- **AggregateExpression**: Aggregate functions
-- **WindowExpression**: Window functions
-
-**Expression Evaluation**:
+### Columnar Storage Layout
 
 ```text
+Table: users (id, name, age, active)
 
-Input: DataChunk (2048 rows)
-  ↓
-Expression Tree Evaluation (depth-first)
-  ↓
-Output: Vector (2048 values)
+┌─────────────────────────────────────────────────┐
+│ Column: id (INTEGER)                            │
+│ ┌─────────────────────────────────────────────┐ │
+│ │ Block 0: [1, 2, 3, ..., 100000]             │ │
+│ │ Compression: Uncompressed                   │ │
+│ │ Min: 1, Max: 100000                         │ │
+│ └─────────────────────────────────────────────┘ │
+└─────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────┐
+│ Column: name (VARCHAR)                          │
+│ ┌─────────────────────────────────────────────┐ │
+│ │ Block 0: ["Alice", "Bob", ...]              │ │
+│ │ Compression: Dictionary                     │ │
+│ │ Dictionary: {0: "Alice", 1: "Bob", ...}     │ │
+│ │ Indices: [0, 1, 0, 2, ...]                  │ │
+│ └─────────────────────────────────────────────┘ │
+└─────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────┐
+│ Column: age (INTEGER)                           │
+│ ┌─────────────────────────────────────────────┐ │
+│ │ Block 0: [25, 25, 25, 30, 30, ...]          │ │
+│ │ Compression: RLE                            │ │
+│ │ Runs: [(25, 3), (30, 2), ...]               │ │
+│ └─────────────────────────────────────────────┘ │
+└─────────────────────────────────────────────────┘
 ```
 
-### 3.3 Aggregation System
-
-**Aggregate State Machine**:
-
-```rust
-pub trait AggregateState: Send + Sync {
-    fn update(&mut self, value: &Value) -> DuckDBResult<()>;
-    fn merge(&mut self, other: &dyn AggregateState) -> DuckDBResult<()>;
-    fn finalize(&self) -> DuckDBResult<Value>;
-}
-```
-
-**Aggregate Implementations**:
-
-1. **SumState**: Running sum with overflow detection
-2. **AvgState**: Count + sum for average calculation
-3. **MinState/MaxState**: Track extremes
-4. **StdDevState**: Welford's online algorithm
-5. **CountState**: Simple counter with distinct support
-
-**Parallel Aggregation**:
+### Block Structure
 
 ```text
-
-Thread 1:     Thread 2:     Thread 3:
-┌────────┐   ┌────────┐   ┌────────┐
-│ Local  │   │ Local  │   │ Local  │
-│ State  │   │ State  │   │ State  │
-└────┬───┘   └────┬───┘   └────┬───┘
-     │            │            │
-     └────────────┴────────────┘
-                  │
-                  ▼
-            ┌──────────┐
-            │  Global  │
-            │  Merge   │
-            └──────────┘
+┌─────────────────────────────────────────────────────────┐
+│                      Block Header                       │
+│  ┌────────────────────────────────────────────────────┐ │
+│  │ Magic: "PRSM"                                      │ │
+│  │ Version: 1                                         │ │
+│  │ Block ID: 42                                       │ │
+│  │ Row Count: 100000                                  │ │
+│  │ Compression: Dictionary                            │ │
+│  │ Compressed Size: 65536                             │ │
+│  │ Uncompressed Size: 262144                          │ │
+│  │ Checksum: 0xABCD1234                               │ │
+│  └────────────────────────────────────────────────────┘ │
+└─────────────────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────┐
+│                     Compressed Data                     │
+│  ┌────────────────────────────────────────────────────┐ │
+│  │ [compressed bytes ...]                             │ │
+│  └────────────────────────────────────────────────────┘ │
+└─────────────────────────────────────────────────────────┘
 ```
 
-### 3.4 Window Function System
-
-**Window Frame Definition**:
-
-```rust
-pub struct WindowFrame {
-    pub units: WindowFrameUnits,      // ROWS, RANGE, GROUPS
-    pub start_bound: WindowFrameBound, // Start of frame
-    pub end_bound: Option<WindowFrameBound>, // End of frame
-}
-
-pub enum WindowFrameBound {
-    UnboundedPreceding,
-    Preceding(usize),
-    CurrentRow,
-    Following(usize),
-    UnboundedFollowing,
-}
-```
-
-**Window Function Evaluation**:
-
-1. **Partition**: Split by PARTITION BY columns
-2. **Sort**: Order by ORDER BY columns
-3. **Frame**: Define window boundaries
-4. **Compute**: Apply function to each row's frame
-
-**Optimizations**:
-
-- **Peer Groups**: Cache rows with identical ORDER BY values
-- **Incremental Update**: Reuse previous frame computations
-- **Vectorized**: Process entire partitions when possible
-
-### 3.5 Join System
-
-**Join Algorithms**:
-
-**1. Hash Join** (default):
+### MVCC Implementation
 
 ```text
-
-Build Phase:
-  For each row in RIGHT table:
-    hash(join_keys) → insert into hash table
-
-Probe Phase:
-  For each row in LEFT table:
-    hash(join_keys) → probe hash table
-    emit matching tuples
-```
-
-**2. Parallel Hash Join**:
-
-```text
-
-Build Phase (parallel):
-  Thread-local hash table construction
-  256 partitions using bitwise AND
-
-Probe Phase (lock-free):
-  Read-only hash table access
-  Partition-local processing
-```
-
-**Join Types**:
-
-- **Inner**: Only matching rows
-- **Left**: All left rows + matching right
-- **Right**: All right rows + matching left
-- **Semi**: Left rows with right match (existence)
-- **Anti**: Left rows without right match (non-existence)
-
-### 3.6 PIVOT/UNPIVOT System
-
-**PIVOT Architecture**:
-
-```text
-
-Input Rows (long format):
-region  | quarter | revenue
---------|---------|--------
-East    | Q1      | 100
-East    | Q2      | 150
-West    | Q1      | 120
-
-     ↓ PIVOT (SUM(revenue) FOR quarter IN ('Q1', 'Q2') GROUP BY region)
-
-Output Rows (wide format):
-region  | Q1  | Q2
---------|-----|----
-East    | 100 | 150
-West    | 120 | NULL
-```
-
-**PIVOT Implementation**:
-
-1. **Hash Table**: (group_key, pivot_key) → aggregate_states[]
-2. **Aggregation**: Update states for each input row
-3. **Finalization**: Convert hash table to result rows
-
-**UNPIVOT Architecture**:
-
-```text
-
-Input Rows (wide format):
-region  | Q1  | Q2
---------|-----|----
-East    | 100 | 150
-
-     ↓ UNPIVOT (revenue FOR quarter IN (Q1, Q2))
-
-Output Rows (long format):
-region  | quarter | revenue
---------|---------|--------
-East    | Q1      | 100
-East    | Q2      | 150
-```
-
-**UNPIVOT Implementation**:
-
-1. **Iteration**: For each input row, generate N output rows
-2. **Column Extraction**: Read values from specified columns
-3. **NULL Handling**: Filter or include based on INCLUDE/EXCLUDE NULLS
-
----
-
-## 4. Data Flow
-
-### 4.1 Query Execution Flow
-
-```text
-
-SQL String
-  ↓ tokenize
-Tokens
-  ↓ parse
-AST (Abstract Syntax Tree)
-  ↓ bind
-Bound AST (with types)
-  ↓ plan
-Logical Plan
-  ↓ optimize
-Optimized Logical Plan
-  ↓ convert
-Physical Plan
-  ↓ execute
-DataChunk Stream
-  ↓ materialize
-Result Set
-```
-
-### 4.2 DataChunk Flow
-
-**Chunk Size**: 2048 rows (configurable via `types::utils::MAX_CHUNK_SIZE`)
-
-**Pipeline Execution**:
-
-```text
-
-Source Operator (TableScan)
-  ↓ produces DataChunk[2048]
-Filter Operator
-  ↓ filters → DataChunk[~1500]
-Project Operator
-  ↓ computes → DataChunk[~1500]
-Aggregate Operator
-  ↓ groups → DataChunk[100]
-Sort Operator
-  ↓ orders → DataChunk[100]
-Limit Operator
-  ↓ limits → DataChunk[10]
-Result
-```
-
-**Chunk Characteristics**:
-
-- **Row-oriented within chunk**: Easy to process
-- **Column-oriented across chunks**: Good cache locality
-- **Self-describing**: Carries type information
-- **Immutable**: Safe for parallel processing
-
-### 4.3 Memory Flow
-
-**Memory Allocation Strategy**:
-
-1. **Small allocations** (<2KB): Stack or small heap
-2. **Medium allocations** (2KB-2MB): Heap with pooling
-3. **Large allocations** (>2MB): Direct heap allocation
-
-**Reference Counting**:
-
-```rust
-Arc<DataChunk>  // Shared ownership, thread-safe
-Box<Operator>   // Unique ownership
-&DataChunk      // Borrowed reference
-```
-
-**Memory Pressure Handling**:
-
-1. **Spilling**: Write intermediate results to disk (planned)
-2. **Streaming**: Process one chunk at a time
-3. **Memory Limits**: Configurable per-query limits (planned)
-
----
-
-## 5. Design Patterns
-
-### 5.1 Builder Pattern
-
-**Used For**: Creating complex objects
-
-**Example**:
-
-```rust
-let query = QueryBuilder::new()
-    .select(vec!["name", "age"])
-    .from("users")
-    .where_clause("age > 18")
-    .order_by("name")
-    .build()?;
-```
-
-### 5.2 Strategy Pattern
-
-**Used For**: Interchangeable algorithms
-
-**Example**: Aggregate functions
-
-```rust
-trait AggregateState {
-    fn update(&mut self, value: &Value) -> DuckDBResult<()>;
-    fn finalize(&self) -> DuckDBResult<Value>;
-}
-
-// Different strategies for different aggregates
-impl AggregateState for SumState { ... }
-impl AggregateState for AvgState { ... }
-```
-
-### 5.3 Iterator Pattern
-
-**Used For**: Sequential data access
-
-**Example**: DataChunkStream
-
-```rust
-pub trait DataChunkStream {
-    fn next(&mut self) -> Option<DuckDBResult<DataChunk>>;
-}
-```
-
-### 5.4 Visitor Pattern
-
-**Used For**: AST traversal
-
-**Example**: Expression evaluation
-
-```rust
-impl Expression for BinaryOp {
-    fn evaluate(&self, chunk: &DataChunk) -> DuckDBResult<Vector> {
-        let left = self.left.evaluate(chunk)?;   // Visit left
-        let right = self.right.evaluate(chunk)?; // Visit right
-        self.apply_op(&left, &right)            // Combine
-    }
-}
-```
-
-### 5.5 Factory Pattern
-
-**Used For**: Object creation
-
-**Example**: Aggregate state creation
-
-```rust
-pub fn create_aggregate_state(name: &str) -> DuckDBResult<Box<dyn AggregateState>> {
-    match name.to_lowercase().as_str() {
-        "sum" => Ok(Box::new(SumState::new())),
-        "avg" => Ok(Box::new(AvgState::new())),
-        "count" => Ok(Box::new(CountState::new())),
-        _ => Err(DuckDBError::InvalidArgument(...)),
-    }
-}
-```
-
-### 5.6 Type State Pattern
-
-**Used For**: Compile-time state tracking
-
-**Example**: Transaction states
-
-```rust
-struct Transaction<State> {
-    state: PhantomData<State>,
-    // ...
-}
-
-struct Active;
-struct Committed;
-
-impl Transaction<Active> {
-    fn commit(self) -> Transaction<Committed> { ... }
-}
+Transaction Timeline:
+
+T1 (id=100): BEGIN → INSERT (1, 'Alice') → COMMIT
+T2 (id=101): BEGIN → UPDATE id=1 SET name='Alicia' → COMMIT
+T3 (id=102): BEGIN → SELECT * → COMMIT
+
+Row Versions:
+┌─────────────────────────────────────────────────┐
+│ Row ID: 1                                       │
+│ ┌─────────────────────────────────────────────┐ │
+│ │ Version 1:                                  │ │
+│ │   Data: (1, 'Alice')                        │ │
+│ │   Xmin: 100 (created by T1)                 │ │
+│ │   Xmax: 101 (deleted by T2)                 │ │
+│ │   Next: → Version 2                         │ │
+│ └─────────────────────────────────────────────┘ │
+│ ┌─────────────────────────────────────────────┐ │
+│ │ Version 2:                                  │ │
+│ │   Data: (1, 'Alicia')                       │ │
+│ │   Xmin: 101 (created by T2)                 │ │
+│ │   Xmax: NULL (current version)              │ │
+│ │   Next: NULL                                │ │
+│ └─────────────────────────────────────────────┘ │
+└─────────────────────────────────────────────────┘
+
+Visibility Rules:
+- T3 (id=102) sees Version 2 if T2 committed before T3 started
+- T3 sees Version 1 if T2 committed after T3 started (snapshot isolation)
 ```
 
 ---
 
-## 6. Performance Characteristics
+## Query Processing
 
-### 6.1 Time Complexity
-
-| Operation | Best Case | Average Case | Worst Case |
-|-----------|-----------|--------------|------------|
-| Table Scan | O(n) | O(n) | O(n) |
-| Filter | O(n) | O(n) | O(n) |
-| Hash Join | O(n+m) | O(n+m) | O(n×m) |
-| Hash Aggregate | O(n) | O(n) | O(n log n) |
-| Sort | O(n) | O(n log n) | O(n log n) |
-| Index Lookup | O(log n) | O(log n) | O(n) |
-
-### 6.2 Space Complexity
-
-| Component | Memory Usage |
-|-----------|--------------|
-| DataChunk | ~16KB per chunk (2048 rows) |
-| Hash Table | ~40 bytes per entry + key/value |
-| Sort Buffer | n × row_size |
-| Index | ~32 bytes per entry |
-| Expression Tree | ~100 bytes per node |
-
-### 6.3 Scalability
-
-**Vertical Scaling**:
-
-- **CPU**: Linear scaling up to #cores for parallel operations
-- **Memory**: Limited by system RAM (no spilling yet)
-- **Disk**: Sequential I/O bandwidth limited
-
-**Horizontal Scaling**:
-
-- Not yet supported
-- Planned with distributed execution (see ROADMAP.md)
-
-### 6.4 Benchmarks
-
-**Typical Performance** (on commodity hardware):
-
-- **Table Scan**: 2-4 GB/sec
-- **Filter**: 1-3 GB/sec
-- **Hash Join**: 500 MB/sec - 2 GB/sec
-- **Aggregate**: 800 MB/sec - 2.5 GB/sec
-- **Sort**: 400 MB/sec - 1.5 GB/sec
-
-**TPC-H Q1** (1GB scale factor):
-
-- **DuckDB C++**: ~0.8 seconds
-- **DuckDBRS**: ~1.2 seconds (150% of C++)
-- **PostgreSQL**: ~25 seconds
-
----
-
-## 7. Memory Management
-
-### 7.1 Ownership Model
-
-**Rust Ownership Rules**:
-
-1. Each value has exactly one owner
-2. Ownership can be transferred (move)
-3. Owners can lend references (borrow)
-
-**Application in DuckDBRS**:
+### Vectorized Execution Example
 
 ```rust
-// Ownership transfer
-let chunk = create_chunk();  // chunk owns DataChunk
-process(chunk);             // ownership transferred
+// Execute: SELECT age + 5 FROM users WHERE age > 18
 
-// Shared ownership (Arc)
-let chunk = Arc::new(create_chunk());
-let chunk_copy = Arc::clone(&chunk);  // Reference counted
+// Input: DataChunk with 2048 rows
+let chunk = scan_table("users"); // [age: [15, 20, 25, 30, ...]]
 
-// Borrowing
-fn filter(chunk: &DataChunk) { ... }  // Borrows, doesn't own
+// Step 1: Filter (age > 18)
+let filter = chunk.filter(|age| age > 18);
+// Selection Vector: [false, true, true, true, ...]
+// Filtered count: 1500 rows
+
+// Step 2: Project (age + 5)
+let result = filter.project(|age| age + 5);
+// Result: [25, 30, 35, ...]
+
+// SIMD optimization applied automatically for arithmetic
 ```
 
-### 7.2 Memory Safety Guarantees
-
-1. **No NULL pointer dereferences**: Enforced by Option< T>
-2. **No use-after-free**: Enforced by borrow checker
-3. **No data races**: Enforced by Send/Sync traits
-4. **No buffer overflows**: Bounds checking on vectors
-
-### 7.3 Memory Allocation Strategy
-
-**Stack Allocation**:
-
-- Small values (<1KB)
-- Function-local DataChunks
-- Temporary computations
-
-**Heap Allocation**:
-
-- Large DataChunks
-- Hash tables
-- Expression trees
-- Result buffers
-
-**Memory Pools** (Planned):
-
-- Pre-allocated chunk buffers
-- Reusable hash table buckets
-- Expression evaluation scratch space
-
----
-
-## 8. Concurrency Model
-
-### 8.1 Thread Safety
-
-**Immutable Data Sharing**:
-
-```rust
-Arc<DataChunk>  // Immutable, shared across threads
-Arc<dyn Expression>  // Immutable expression tree
-```
-
-**Mutable Data Protection**:
-
-```rust
-Mutex<T>  // Mutual exclusion
-RwLock<T>  // Readers-writer lock
-Atomic types  // Lock-free atomics
-```
-
-### 8.2 Parallel Execution
-
-**Rayon Work-Stealing**:
-
-```rust
-use rayon::prelude::*;
-
-chunks.par_iter()           // Parallel iterator
-    .map(|chunk| process(chunk))  // Parallel map
-    .collect()              // Gather results
-```
-
-**Morsel-Driven Parallelism**:
+### Parallel Hash Join
 
 ```text
+Table A: 1M rows
+Table B: 100K rows
 
-Input Stream
-  ↓
-Split into Morsels (chunks)
-  ↓
-Thread Pool (Rayon)
-  ├─ Worker 1: Process morsel
-  ├─ Worker 2: Process morsel
-  ├─ Worker 3: Process morsel
-  └─ Worker 4: Process morsel
-  ↓
-Combine Results
-```
-
-### 8.3 Lock-Free Algorithms
-
-**Hash Table Probe Phase**:
-
-- Built hash table is read-only
-- Multiple threads probe simultaneously
-- No synchronization needed
-
-**Aggregate Finalization**:
-
-- Each thread finalizes its local states
-- Merge phase uses sequential consistency
-
----
-
-## 9. Extension Points
-
-### 9.1 Custom Functions
-
-**Scalar Function Registration**:
-
-```rust
-pub trait ScalarFunction {
-    fn name(&self) -> &str;
-    fn signature(&self) -> FunctionSignature;
-    fn evaluate(&self, args: &[Value]) -> DuckDBResult<Value>;
-}
-
-// Example: Custom DISTANCE function
-database.register_scalar_function(Box::new(DistanceFunction));
-```
-
-### 9.2 Custom Aggregates
-
-**Aggregate Function Registration**:
-
-```rust
-pub trait AggregateFunction {
-    fn name(&self) -> &str;
-    fn create_state(&self) -> Box<dyn AggregateState>;
-}
-
-// Example: Custom MEDIAN_APPROX
-database.register_aggregate_function(Box::new(MedianApproxFunction));
-```
-
-### 9.3 Custom Storage
-
-**Storage Backend Interface**:
-
-```rust
-pub trait StorageBackend {
-    fn read_chunk(&self, segment_id: u64, chunk_id: u32) -> DuckDBResult<DataChunk>;
-    fn write_chunk(&mut self, chunk: &DataChunk) -> DuckDBResult<(u64, u32)>;
-}
-
-// Example: S3 storage backend
-database.register_storage_backend(Box::new(S3StorageBackend::new(config)));
-```
-
-### 9.4 Custom File Formats
-
-**File Format Interface** (Planned):
-
-```rust
-pub trait FileFormat {
-    fn name(&self) -> &str;
-    fn can_read(&self, path: &Path) -> bool;
-    fn read(&self, path: &Path) -> DuckDBResult<Box<dyn DataChunkStream>>;
-}
-
-// Example: Avro format reader
-database.register_file_format(Box::new(AvroFormat));
+┌─────────────────────────────────────────────┐
+│            Phase 1: Hash Build              │
+│  ┌────────────────────────────────────────┐ │
+│  │ Partition B into 16 partitions         │ │
+│  │ Thread 1: Build hash table for P0-P3   │ │
+│  │ Thread 2: Build hash table for P4-P7   │ │
+│  │ Thread 3: Build hash table for P8-P11  │ │
+│  │ Thread 4: Build hash table for P12-P15 │ │
+│  └────────────────────────────────────────┘ │
+└─────────────────────────────────────────────┘
+                    │
+                    ▼
+┌─────────────────────────────────────────────┐
+│            Phase 2: Hash Probe              │
+│  ┌────────────────────────────────────────┐ │
+│  │ Process A in morsels (100K rows)       │ │
+│  │ Thread 1: Probe morsel 0               │ │
+│  │ Thread 2: Probe morsel 1               │ │
+│  │ Thread 3: Probe morsel 2               │ │
+│  │ Thread 4: Probe morsel 3               │ │
+│  │ .. (work stealing as threads complete) │ │
+│  └────────────────────────────────────────┘ │
+└─────────────────────────────────────────────┘
 ```
 
 ---
 
-## 10. Security Considerations
+## Transaction Management
 
-### 10.1 SQL Injection Prevention
+### Isolation Levels
 
-**Parameterized Queries**:
+| Level | Dirty Read | Non-Repeatable Read | Phantom Read |
+|-------|-----------|---------------------|--------------|
+| Read Uncommitted | Yes | Yes | Yes |
+| Read Committed | No | Yes | Yes |
+| Repeatable Read | No | No | Yes |
+| Serializable | No | No | No |
 
-```rust
-// Safe: Uses parameters
-database.execute("SELECT * FROM users WHERE id = ?", &[Value::Integer(42)])?;
-
-// Unsafe: String concatenation (not supported)
-// database.execute(&format!("SELECT * FROM users WHERE id = {}", user_input))?;
-```
-
-### 10.2 Memory Safety
-
-**No Unsafe Code in Core**:
-
-- All core logic uses safe Rust
-- `unsafe` blocks only in:
-  - FFI boundaries (if any)
-  - Performance-critical low-level operations
-  - All `unsafe` blocks documented and justified
-
-### 10.3 Resource Limits
-
-**Query Timeouts** (Planned):
-
-```rust
-database.set_query_timeout(Duration::from_secs(30));
-```
-
-**Memory Limits** (Planned):
-
-```rust
-database.set_memory_limit(1024 * 1024 * 1024); // 1GB
-```
-
-### 10.4 Access Control
-
-**Role-Based Access** (Planned):
-
-```rust
-database.grant("SELECT", "users", "analyst_role")?;
-database.revoke("DELETE", "users", "analyst_role")?;
-```
-
----
-
-## Appendices
-
-### A. Directory Structure
+### Transaction Lifecycle
 
 ```text
-duckdbrs/
-├── src/
-│   ├── catalog/           # Schema metadata
-│   ├── common/            # Shared utilities
-│   │   └── error.rs       # Error types
-│   ├── execution/         # Execution engine
-│   │   ├── operators.rs   # Physical operators
-│   │   ├── parallel_operators.rs
-│   │   ├── pivot_utils.rs # PIVOT/UNPIVOT utilities
-│   │   └── pipeline.rs    # Execution pipelines
-│   ├── expression/        # Expression system
-│   │   ├── aggregate.rs   # Aggregate functions
-│   │   ├── function.rs    # Scalar functions
-│   │   └── window.rs      # Window functions
-│   ├── parser/            # SQL parser
-│   │   ├── ast.rs         # Abstract Syntax Tree
-│   │   ├── keywords.rs    # SQL keywords
-│   │   ├── parser.rs      # Parser implementation
-│   │   └── tokenizer.rs   # Lexer
-│   ├── planner/           # Query planning
-│   │   ├── logical_plan.rs
-│   │   ├── optimizer.rs
-│   │   └── physical_plan.rs
-│   ├── storage/           # Storage layer
-│   │   ├── buffer_manager.rs
-│   │   ├── table_manager.rs
-│   │   └── transaction.rs
-│   ├── types/             # Type system
-│   │   └── mod.rs
-│   └── lib.rs             # Library root
-├── tests/                 # Integration tests
-├── benches/               # Benchmarks
-├── docs/                  # Documentation
-└── Cargo.toml            # Package manifest
+BEGIN
+  ├─→ Allocate Transaction ID
+  ├─→ Create Snapshot (for Read Committed+)
+  ├─→ Acquire Locks (for Serializable)
+  │
+  ├─→ Execute Operations
+  │    ├─→ Write to WAL
+  │    ├─→ Update Data (with MVCC versions)
+  │    └─→ Track Modified Pages
+  │
+  └─→ COMMIT/ROLLBACK
+       ├─→ COMMIT:
+       │    ├─→ Mark transaction as committed
+       │    ├─→ Force WAL to disk
+       │    ├─→ Release locks
+       │    └─→ Update visibility
+       │
+       └─→ ROLLBACK:
+            ├─→ Mark transaction as aborted
+            ├─→ Discard WAL entries
+            ├─→ Release locks
+            └─→ Keep MVCC versions for garbage collection
 ```
-
-### B. Key Dependencies
-
-```toml
-[dependencies]
-chrono = "0.4"          # Date/time handling
-rayon = "1.7"           # Parallel iterators
-regex = "1.9"           # Regular expressions
-bit-vec = "0.6"         # Bit vectors for NULL bitmaps
-```
-
-### C. Build Configuration
-
-**Debug Build**:
-
-```bash
-cargo build
-```
-
-**Release Build** (optimizations enabled):
-
-```bash
-cargo build --release
-```
-
-**Profile-Guided Optimization** (PGO):
-
-```bash
-# Generate profile
-RUSTFLAGS="-Cprofile-generate=/tmp/pgo-data" cargo build --release
-./target/release/benchmark
-# Use profile
-RUSTFLAGS="-Cprofile-use=/tmp/pgo-data" cargo build --release
-```
-
-### D. Testing Strategy
-
-**Unit Tests**: Test individual components
-
-```bash
-cargo test --lib
-```
-
-**Integration Tests**: Test end-to-end scenarios
-
-```bash
-cargo test --tests
-```
-
-**Property-Based Tests** (Planned): Use `proptest` for randomized testing
-
-**Fuzzing** (Planned): Use `cargo-fuzz` for parser/binder fuzzing
 
 ---
 
-## 11. Known Limitations
+## Performance Optimizations
 
-⚠️ **Important**: This section documents fundamental architectural limitations that affect advanced SQL feature implementation.
+### 1. Columnar Storage Benefits
 
-### 11.1 Critical Architectural Gaps
+- **Better Compression**: Similar values together
+- **Cache Efficiency**: Read only needed columns
+- **SIMD Friendly**: Contiguous data layout
 
-**Detailed Documentation**: See [`ARCHITECTURAL_LIMITATIONS.md`](./ARCHITECTURAL_LIMITATIONS.md) for comprehensive analysis.
+### 2. Vectorized Processing
 
-#### Summary of Key Limitations:
+- **Batch Processing**: Amortize function call overhead
+- **CPU Cache Utilization**: Process 2048 rows at once
+- **SIMD Instructions**: Parallel operations on vectors
 
-1. **Expression Evaluation Context** (Critical)
-   - Expressions cannot access ExecutionContext
-   - Blocks: Scalar subqueries, EXISTS, IN, correlated subqueries
-   - Impact: ~6 test categories, major SQL feature gap
+### 3. Adaptive Compression
 
-2. **CTE Materialization** (Critical)
-   - No mechanism to materialize and cache CTE results
-   - CTEs parse and bind correctly but return empty data during execution
-   - Blocks: All CTE-based queries
-   - Impact: ~7 test categories
+- **Dictionary Encoding**: Low cardinality (< 10% unique)
+- **RLE**: Sorted or repeated data (> 20% consecutive duplicates)
+- **Uncompressed**: High entropy data
 
-3. **Intermediate Result Storage** (High Priority)
-   - ExecutionContext cannot store materialized results
-   - No caching for subquery results
-   - Performance impact: CTEs execute multiple times
+### 4. Parallel Execution
 
-4. **Column Index Mismatch** (Medium Priority)
-   - Logical plan column indices don't align with physical execution
-   - Causes wrong column selection or empty results
+- **Morsel-Driven**: 100K row work units
+- **Work Stealing**: Dynamic load balancing
+- **Lock-Free**: Minimize synchronization overhead
 
-5. **Aggregate Execution Issues** (Medium Priority)
-   - ParallelHashAggregateOperator has integration issues with CTEs
-   - Empty input handling needs improvement
+### 5. Query Optimization
 
-### 11.2 Feature Implementation Status
-
-| Feature Category | Parsing | Binding | Optimization | Execution | Blocker |
-|-----------------|---------|---------|--------------|-----------|---------|
-| Simple CTEs | ✅ | ✅ | ✅ | ❌ | Materialization |
-| Recursive CTEs | ✅ | ⚠️ | ❌ | ❌ | Fixpoint iteration |
-| Scalar Subqueries | ✅ | ✅ | ✅ | ❌ | Expression context |
-| EXISTS Subqueries | ✅ | ✅ | ✅ | ❌ | Expression context |
-| IN Subqueries | ✅ | ✅ | ✅ | ❌ | Expression context |
-| Correlated Subqueries | ✅ | ❌ | ❌ | ❌ | Expression context |
-
-### 11.3 Recommended Solutions
-
-**Phase 1** (1-2 weeks): Implement CTE materialization operators
-- Add `PhysicalPlan::CTEMaterialization` and `PhysicalPlan::CTEScan`
-- Store materialized results in ExecutionContext
-- Expected: 7 CTE tests passing
-
-**Phase 2** (2-3 weeks): Refactor expression evaluation
-- Add `context: &ExecutionContext` parameter to `Expression::evaluate()`
-- Update all ~100 expression implementations
-- Breaking change across entire codebase
-
-**Phase 3** (2-3 weeks): Implement subquery execution
-- Create SubqueryExpression type
-- Enable expression-level subquery execution
-- Expected: 6+ subquery tests passing
-
-**Total Estimated Effort**: 8-12 weeks
-
-### 11.4 Comparison with DuckDB C++
-
-DuckDBRS is **not a strict port** of DuckDB C++. Key architectural differences:
-
-| Component | DuckDB C++ | DuckDBRS | Gap |
-|-----------|------------|----------|-----|
-| Expression Evaluation | Has ExecutionContext | Context-free | ⚠️ Critical |
-| CTE Handling | Dedicated operators | No materialization | ⚠️ Critical |
-| Subquery Support | Full support | Parser only | ⚠️ Critical |
-| Feature Parity | 100% (reference) | ~40% estimated | Significant |
-
-**Note**: For production use requiring full DuckDB compatibility, use the official [`duckdb-rs`](https://github.com/duckdb/duckdb-rs) crate which provides Rust bindings to the C++ library.
-
-### 11.5 Workarounds
-
-Until architectural limitations are addressed:
-
-**For CTEs**: Use subqueries in FROM clause (also currently broken, but being worked on)
-
-**For Subqueries**:
-- Rewrite as JOINs where possible
-- Use separate queries and application-level logic
-- Consider using DuckDB C++ via `duckdb-rs` crate
-
-**For Complex Queries**:
-- Break into multiple simple queries
-- Materialize intermediate results in application code
-- Use external query engines for unsupported features
+- **Filter Pushdown**: Reduce data early
+- **Projection Pruning**: Read only needed columns
+- **Join Reordering**: Smallest tables first
+- **Predicate Reordering**: Most selective first
 
 ---
 
-## Conclusion
+## Extension System
 
-DuckDBRS provides a robust, type-safe, and performant analytical database engine implemented in Rust. The architecture emphasizes:
+### Architecture
 
-1. **Safety**: Rust's type system prevents entire classes of bugs
-2. **Performance**: Vectorized execution with parallelism
-3. **Correctness**: Comprehensive testing and validation
-4. **Extensibility**: Plugin points for custom functionality
-5. **Maintainability**: Clean separation of concerns
+```text
+┌─────────────────────────────────────────────┐
+│          Extension Manager                  │
+│  ┌────────────────────────────────────────┐ │
+│  │ Extension Registry                     │ │
+│  │  - CSV Reader                          │ │
+│  │  - Parquet Reader                      │ │
+│  │  - JSON Reader                         │ │
+│  │  - SQLite Reader                       │ │
+│  │  - Custom Extensions...                │ │
+│  └────────────────────────────────────────┘ │
+└─────────────────────────────────────────────┘
+                    │
+                    ▼
+┌─────────────────────────────────────────────┐
+│          Configuration Manager              │
+│  ┌────────────────────────────────────────┐ │
+│  │ Settings: Memory, Threads, Compression │ │
+│  │ Secrets: AWS Keys, Database Credential │ │
+│  └────────────────────────────────────────┘ │
+└─────────────────────────────────────────────┘
+```
 
-**Current Limitations**: The architecture has fundamental gaps that prevent implementation of advanced SQL features (CTEs, subqueries). See [ARCHITECTURAL_LIMITATIONS.md](./ARCHITECTURAL_LIMITATIONS.md) for details and recommended solutions.
+### Adding New Extensions
 
-For deployment strategies and future roadmap, see:
+1. Implement `FileReader` trait
+2. Register with `ExtensionManager`
+3. Define table functions (e.g., `read_parquet()`)
+4. Handle type mapping and schema inference
 
-- `ROADMAP.md` - Development roadmap
-- `CLOUD_DEPLOYMENT_ROADMAP.md` - Cloud and distributed features
-- `ARCHITECTURAL_LIMITATIONS.md` - Detailed analysis of architectural gaps
+---
 
-**Version History**:
+## Future Enhancements
 
-- 0.1.0 (2025-11-14): Initial architecture document
+### Planned Features
 
-**Maintained by**: DuckDBRS Contributors
+- [ ] Spill-to-disk for large hash joins
+- [ ] External sorting for datasets > memory
+- [ ] Query result caching
+- [ ] Materialized views
+- [ ] User-defined functions (UDFs)
+- [ ] Additional compression algorithms (LZ4, ZSTD)
+- [ ] Bitmap indices for low-cardinality columns
+- [ ] Zone maps for min/max filtering
+
+### Performance Improvements
+
+- [ ] JIT compilation for expressions
+- [ ] Adaptive join strategies
+- [ ] Statistics-based optimization
+- [ ] Query compilation (LLVM backend)
+
+---
+
+## References
+
+### Inspired By
+
+- [DuckDB](https://duckdb.org/): Modern analytical database design
+- [ClickHouse](https://clickhouse.com/): Columnar OLAP database
+- [Apache Arrow](https://arrow.apache.org/): Columnar memory format
+
+### Academic Papers
+
+- "MonetDB/X100: Hyper-Pipelining Query Execution" (Boncz et al.)
+- "Morsel-Driven Parallelism" (Leis et al.)
+- "Volcano - An Extensible and Parallel Query Evaluation System" (Graefe)
+
+---
+
+**Document Version**: 1.0
+**Contributors**: PrismDB Team
+**License**: MIT

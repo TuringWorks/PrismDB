@@ -1,6 +1,6 @@
 //! Extension Management
 //!
-//! This module provides functionality for installing and loading DuckDB extensions.
+//! This module provides functionality for installing and loading PrismDB extensions.
 
 pub mod aws_signature;
 pub mod config;
@@ -24,7 +24,7 @@ use crate::common::error::{PrismDBError, PrismDBResult};
 use std::collections::{HashMap, HashSet};
 use std::sync::{Arc, RwLock};
 
-/// Known DuckDB extensions with their descriptions
+/// Known PrismDB extensions with their descriptions
 #[derive(Debug, Clone)]
 pub struct ExtensionInfo {
     pub name: String,
@@ -49,7 +49,7 @@ impl ExtensionManager {
     pub fn new() -> Self {
         let mut catalog = HashMap::new();
 
-        // Core extensions (shipped with DuckDB)
+        // Core extensions bundled with PrismDB
         Self::add_core_extension(&mut catalog, "httpfs", "HTTP and S3 file system support");
         Self::add_core_extension(&mut catalog, "json", "JSON support");
         Self::add_core_extension(&mut catalog, "parquet", "Parquet file format support");
@@ -135,7 +135,7 @@ impl ExtensionManager {
         println!("Installing extension '{}'...", extension_name);
 
         if info.core {
-            println!("  └─ Core extension (included with DuckDB)");
+            println!("  └─ Core extension (included with PrismDB)");
         } else {
             println!("  └─ Downloading from extension repository...");
             println!("  └─ Verifying signature...");

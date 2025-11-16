@@ -3,13 +3,13 @@
 //! These tests validate that parallel operators are integrated correctly
 //! and provide status reporting.
 
-use prismdb::PrismDBResult;
+use prism::PrismDBResult;
 
 #[test]
 fn test_parallel_operators_summary() -> PrismDBResult<()> {
     println!("\n");
     println!("╔══════════════════════════════════════════════════════════════════╗");
-    println!("║           DuckDBRS Parallel Operators - Status Report           ║");
+    println!("║           PrismDB Parallel Operators - Status Report           ║");
     println!("╚══════════════════════════════════════════════════════════════════╝");
     println!();
     println!("📊 Implemented Parallel Operators:");
@@ -45,7 +45,7 @@ fn test_parallel_operators_summary() -> PrismDBResult<()> {
     println!("   - Zero unsafe code");
     println!("   - Production ready");
     println!();
-    println!("🚀 DuckDBRS is ready for high-performance parallel query execution!");
+    println!("🚀 PrismDB is ready for high-performance parallel query execution!");
     println!();
 
     Ok(())

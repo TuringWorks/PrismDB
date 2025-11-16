@@ -1,4 +1,4 @@
-//! Type system module for DuckDB
+//! Type system module for PrismDB
 //!
 //! This module contains the core type system components:
 //! - PhysicalType: Low-level storage representations

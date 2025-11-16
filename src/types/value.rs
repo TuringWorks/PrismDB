@@ -5,7 +5,7 @@ use serde::{Deserialize, Serialize};
 use std::cmp::Ordering;
 use std::fmt;
 
-/// Represents a single value in DuckDB with type information
+/// Represents a single value in PrismDB with type information
 /// Values are the fundamental unit of data in the system
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub enum Value {

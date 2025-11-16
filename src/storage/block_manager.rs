@@ -1,6 +1,6 @@
-//! Block Manager for DuckDB Storage
+//! Block Manager for PrismDB Storage
 //!
-//! This module provides block-based disk I/O following DuckDB's design:
+//! This module provides block-based disk I/O functionality for PrismDB.
 //! - Fixed-size blocks (default 256KB)
 //! - Block allocation and deallocation
 //! - Reading and writing blocks to disk
@@ -13,7 +13,7 @@ use std::io::{Read, Seek, SeekFrom, Write};
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, RwLock};
 
-/// Block size (256KB like DuckDB)
+/// Block size (256KB default)
 pub const BLOCK_SIZE: usize = 262144;
 
 /// Block ID type

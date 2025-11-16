@@ -3,7 +3,7 @@
 //! These tests verify end-to-end query execution functionality.
 //! Currently simplified while advanced features are being implemented.
 
-use prismdb::{Database, PrismDBResult};
+use prism::{Database, PrismDBResult};
 
 #[test]
 fn test_basic_query_execution() -> PrismDBResult<()> {

@@ -1,7 +1,7 @@
 //! Simple query test to debug basic functionality
 
-use prismdb::database::Database;
-use prismdb::PrismDBResult;
+use prism::database::Database;
+use prism::PrismDBResult;
 
 #[test]
 fn test_simple_database_creation() -> PrismDBResult<()> {

@@ -1,6 +1,6 @@
-//! Date/Time Functions (DuckDB-Compatible)
+//! Date/Time Functions
 //!
-//! This module implements DuckDB's date and time manipulation functions for 100% compatibility.
+//! This module implements PrismDB's date and time manipulation functions for 100% compatibility.
 //! Includes: current time, extraction, arithmetic, formatting, parsing, and more.
 
 use crate::common::error::{PrismDBError, PrismDBResult};
