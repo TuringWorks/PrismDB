@@ -3,6 +3,9 @@
 //! This module provides Python bindings using PyO3, allowing PrismDB to be used
 //! from Python as `import prismdb`.
 
+// Suppress non-local impl warning from PyO3 0.20 macros
+#![allow(non_local_definitions)]
+
 #[cfg(feature = "python")]
 mod connection;
 #[cfg(feature = "python")]
