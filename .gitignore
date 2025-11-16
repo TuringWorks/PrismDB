@@ -21,3 +21,13 @@
 # OS files
 Thumbs.db
 src/bin/
+
+# Python distribution artifacts
+dist/
+*.tar.gz
+*.zip
+*.whl
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/

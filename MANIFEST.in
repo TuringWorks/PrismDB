@@ -1,0 +1,32 @@
+# MANIFEST.in - Include additional files in source distribution
+
+include LICENSE
+include README.md
+include README_PYTHON.md
+include INSTALL.md
+include QUICKSTART.md
+include Cargo.toml
+include Cargo.lock
+include pyproject.toml
+
+# Include all Rust source files
+recursive-include src *.rs
+recursive-include src *.toml
+
+# Include Python examples and tests
+recursive-include python_examples *.py
+
+# Include build scripts
+recursive-include scripts *.sh *.bat
+
+# Exclude build artifacts and cache
+global-exclude *.pyc
+global-exclude __pycache__
+global-exclude .DS_Store
+global-exclude *.so
+global-exclude *.dylib
+global-exclude *.dll
+
+# Exclude target directory
+prune target
+prune .git
