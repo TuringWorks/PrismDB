@@ -20,6 +20,7 @@ use std::path::Path;
 use std::sync::{Arc, RwLock};
 
 /// Main database instance
+#[derive(Clone)]
 pub struct Database {
     /// Catalog for schema/table management
     catalog: Arc<RwLock<Catalog>>,

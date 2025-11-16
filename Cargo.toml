@@ -99,6 +99,9 @@ clap = { version = "4.4", features = ["derive"] }
 rustyline = "17.0.2"
 dirs = "6.0.0"
 
+# Python bindings (optional)
+pyo3 = { version = "0.20", features = ["extension-module"], optional = true }
+
 # Testing
 criterion = { version = "0.7.0", features = ["html_reports"] }
 num_cpus = "1.17"
@@ -114,6 +117,7 @@ compression = ["lz4", "zstd", "snap", "flate2"]
 jemalloc = ["jemallocator"]
 simd = []
 extensions = []
+python = ["pyo3"]
 
 [profile.release]
 opt-level = 3
@@ -128,6 +132,7 @@ debug = true
 [lib]
 name = "prism"
 path = "src/lib.rs"
+crate-type = ["cdylib", "rlib"]
 
 [[bin]]
 name = "prism"

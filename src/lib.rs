@@ -14,6 +14,10 @@ pub mod planner;
 pub mod storage;
 pub mod types;
 
+// Python bindings (optional)
+#[cfg(feature = "python")]
+pub mod python;
+
 // Re-export catalog system for convenience
 pub use catalog::Catalog;
 // pub mod main; // Commented out to avoid binary/library conflict
