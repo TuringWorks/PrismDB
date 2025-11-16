@@ -1,0 +1,9 @@
+#### As a CLI
+
+```bash
+# Start interactive shell (default mode)
+./target/release/prism
+
+# Execute a query directly with -q flag
+./target/release/prism -q "SELECT * FROM read_csv_auto('data.csv')"
+```
