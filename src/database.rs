@@ -602,13 +602,20 @@ impl QueryResult {
         })
     }
 
-    /// Convert result to a formatted table string
+    /// Convert result to a formatted table string with color support
     pub fn to_table_string(&self) -> String {
         if self.chunks.is_empty() {
             return String::new();
         }
 
         let mut output = String::new();
+
+        // ANSI color codes
+        const GRAY: &str = "\x1b[90m";      // Dim gray for borders
+        const CYAN: &str = "\x1b[36m";      // Cyan for column names
+        const DIM: &str = "\x1b[2m";        // Dim for types
+        const GREEN: &str = "\x1b[32m";     // Green for values
+        const RESET: &str = "\x1b[0m";      // Reset
 
         // Get column information from first chunk
         let first_chunk = &self.chunks[0];
@@ -661,7 +668,8 @@ impl QueryResult {
             }
         }
 
-        // Print header
+        // Print header (thin borders with darker color)
+        output.push_str(GRAY);
         output.push('┌');
         for (i, width) in column_widths.iter().enumerate() {
             output.push_str(&"─".repeat(width + 2));
@@ -669,30 +677,47 @@ impl QueryResult {
                 output.push('┬');
             }
         }
-        output.push_str("┐\n");
+        output.push_str("┐");
+        output.push_str(RESET);
+        output.push('\n');
 
-        // Print column names
+        // Print column names (cyan color)
+        output.push_str(GRAY);
         output.push('│');
+        output.push_str(RESET);
         for (i, (name, width)) in column_names.iter().zip(&column_widths).enumerate() {
-            output.push_str(&format!(" {:width$} ", name, width = width));
+            output.push_str(&format!(" {}{:width$}{} ", CYAN, name, RESET, width = width));
             if i < column_names.len() - 1 {
+                output.push_str(GRAY);
                 output.push('│');
+                output.push_str(RESET);
             }
         }
-        output.push_str("│\n");
+        output.push_str(GRAY);
+        output.push_str("│");
+        output.push_str(RESET);
+        output.push('\n');
 
-        // Print column types
+        // Print column types (dim color)
+        output.push_str(GRAY);
         output.push('│');
+        output.push_str(RESET);
         for (i, (col_type, width)) in column_types.iter().zip(&column_widths).enumerate() {
             let type_name = format_type_name(col_type);
-            output.push_str(&format!(" {:width$} ", type_name, width = width));
+            output.push_str(&format!(" {}{:width$}{} ", DIM, type_name, RESET, width = width));
             if i < column_types.len() - 1 {
+                output.push_str(GRAY);
                 output.push('│');
+                output.push_str(RESET);
             }
         }
-        output.push_str("│\n");
+        output.push_str(GRAY);
+        output.push_str("│");
+        output.push_str(RESET);
+        output.push('\n');
 
         // Print separator
+        output.push_str(GRAY);
         output.push('├');
         for (i, width) in column_widths.iter().enumerate() {
             output.push_str(&"─".repeat(width + 2));
@@ -700,12 +725,16 @@ impl QueryResult {
                 output.push('┼');
             }
         }
-        output.push_str("┤\n");
+        output.push_str("┤");
+        output.push_str(RESET);
+        output.push('\n');
 
-        // Print rows
+        // Print rows (green values)
         for chunk in &self.chunks {
             for row_idx in 0..chunk.len() {
+                output.push_str(GRAY);
                 output.push('│');
+                output.push_str(RESET);
                 for col_idx in 0..column_count {
                     let value_str = if let Some(vector) = chunk.get_vector(col_idx) {
                         if let Ok(value) = vector.get_value(row_idx) {
@@ -718,19 +747,27 @@ impl QueryResult {
                     };
 
                     output.push_str(&format!(
-                        " {:width$} ",
+                        " {}{:width$}{} ",
+                        GREEN,
                         value_str,
+                        RESET,
                         width = column_widths[col_idx]
                     ));
                     if col_idx < column_count - 1 {
+                        output.push_str(GRAY);
                         output.push('│');
+                        output.push_str(RESET);
                     }
                 }
-                output.push_str("│\n");
+                output.push_str(GRAY);
+                output.push_str("│");
+                output.push_str(RESET);
+                output.push('\n');
             }
         }
 
         // Print footer
+        output.push_str(GRAY);
         output.push('└');
         for (i, width) in column_widths.iter().enumerate() {
             output.push_str(&"─".repeat(width + 2));
@@ -738,7 +775,9 @@ impl QueryResult {
                 output.push('┴');
             }
         }
-        output.push_str("┘\n");
+        output.push_str("┘");
+        output.push_str(RESET);
+        output.push('\n');
 
         output
     }

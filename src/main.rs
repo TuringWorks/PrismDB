@@ -3,11 +3,171 @@
 //! This is the main entry point for the PrismDB CLI application.
 
 use clap::Parser;
+use rustyline::completion::Completer;
 use rustyline::error::ReadlineError;
-use rustyline::DefaultEditor;
+use rustyline::highlight::{Highlighter, CmdKind};
+use rustyline::hint::Hinter;
+use rustyline::validate::Validator;
+use rustyline::{Context, Editor, Helper};
+use std::borrow::Cow;
 use std::process;
 
 use prism::Database;
+
+/// SQL Syntax Highlighter for interactive mode
+struct SqlHighlighter;
+
+impl SqlHighlighter {
+    fn is_keyword(word: &str) -> bool {
+        matches!(
+            word.to_uppercase().as_str(),
+            "SELECT" | "FROM" | "WHERE" | "INSERT" | "UPDATE" | "DELETE" | "CREATE" | "DROP" |
+            "TABLE" | "INDEX" | "VIEW" | "AS" | "JOIN" | "INNER" | "LEFT" | "RIGHT" | "OUTER" |
+            "ON" | "AND" | "OR" | "NOT" | "IN" | "EXISTS" | "BETWEEN" | "LIKE" | "IS" | "NULL" |
+            "ORDER" | "BY" | "GROUP" | "HAVING" | "LIMIT" | "OFFSET" | "UNION" | "INTERSECT" |
+            "EXCEPT" | "WITH" | "DISTINCT" | "ALL" | "VALUES" | "SET" | "INTO" | "PRIMARY" |
+            "KEY" | "FOREIGN" | "REFERENCES" | "UNIQUE" | "CHECK" | "DEFAULT" | "INTEGER" |
+            "VARCHAR" | "TEXT" | "BOOLEAN" | "FLOAT" | "DOUBLE" | "DECIMAL" | "DATE" | "TIME" |
+            "TIMESTAMP" | "BIGINT" | "SMALLINT" | "TINYINT" | "BLOB" | "JSON" | "EXPLAIN" |
+            "ANALYZE" | "BEGIN" | "COMMIT" | "ROLLBACK" | "TRANSACTION" | "CASE" | "WHEN" |
+            "THEN" | "ELSE" | "END" | "CAST" | "TRUE" | "FALSE" | "ASC" | "DESC" | "NULLS" |
+            "FIRST" | "LAST" | "OVER" | "PARTITION" | "WINDOW" | "ROWS" | "RANGE" | "UNBOUNDED" |
+            "PRECEDING" | "FOLLOWING" | "CURRENT" | "ROW"
+        )
+    }
+}
+
+impl Highlighter for SqlHighlighter {
+    fn highlight<'l>(&self, line: &'l str, _pos: usize) -> Cow<'l, str> {
+        let mut highlighted = String::new();
+        let mut chars = line.chars().peekable();
+        let mut current_word = String::new();
+        let mut in_string = false;
+        let mut string_char = ' ';
+
+        // ANSI color codes
+        const KEYWORD: &str = "\x1b[1;34m";  // Bold blue for keywords
+        const STRING: &str = "\x1b[32m";      // Green for strings
+        const NUMBER: &str = "\x1b[33m";      // Yellow for numbers
+        const COMMENT: &str = "\x1b[90m";     // Gray for comments
+        const RESET: &str = "\x1b[0m";        // Reset
+
+        while let Some(ch) = chars.next() {
+            // Handle strings
+            if (ch == '\'' || ch == '"') && !in_string {
+                if !current_word.is_empty() {
+                    if Self::is_keyword(&current_word) {
+                        highlighted.push_str(KEYWORD);
+                        highlighted.push_str(&current_word);
+                        highlighted.push_str(RESET);
+                    } else if current_word.chars().all(|c| c.is_numeric() || c == '.') {
+                        highlighted.push_str(NUMBER);
+                        highlighted.push_str(&current_word);
+                        highlighted.push_str(RESET);
+                    } else {
+                        highlighted.push_str(&current_word);
+                    }
+                    current_word.clear();
+                }
+                in_string = true;
+                string_char = ch;
+                highlighted.push_str(STRING);
+                highlighted.push(ch);
+            } else if in_string {
+                highlighted.push(ch);
+                if ch == string_char {
+                    in_string = false;
+                    highlighted.push_str(RESET);
+                }
+            }
+            // Handle comments
+            else if ch == '-' && chars.peek() == Some(&'-') {
+                if !current_word.is_empty() {
+                    if Self::is_keyword(&current_word) {
+                        highlighted.push_str(KEYWORD);
+                        highlighted.push_str(&current_word);
+                        highlighted.push_str(RESET);
+                    } else {
+                        highlighted.push_str(&current_word);
+                    }
+                    current_word.clear();
+                }
+                highlighted.push_str(COMMENT);
+                highlighted.push(ch);
+                // Add rest of line as comment
+                highlighted.extend(chars.by_ref());
+                highlighted.push_str(RESET);
+                break;
+            }
+            // Handle word boundaries
+            else if ch.is_alphanumeric() || ch == '_' {
+                current_word.push(ch);
+            } else {
+                if !current_word.is_empty() {
+                    if Self::is_keyword(&current_word) {
+                        highlighted.push_str(KEYWORD);
+                        highlighted.push_str(&current_word);
+                        highlighted.push_str(RESET);
+                    } else if current_word.chars().all(|c| c.is_numeric() || c == '.') {
+                        highlighted.push_str(NUMBER);
+                        highlighted.push_str(&current_word);
+                        highlighted.push_str(RESET);
+                    } else {
+                        highlighted.push_str(&current_word);
+                    }
+                    current_word.clear();
+                }
+                highlighted.push(ch);
+            }
+        }
+
+        // Handle any remaining word
+        if !current_word.is_empty() {
+            if Self::is_keyword(&current_word) {
+                highlighted.push_str(KEYWORD);
+                highlighted.push_str(&current_word);
+                highlighted.push_str(RESET);
+            } else if current_word.chars().all(|c| c.is_numeric() || c == '.') {
+                highlighted.push_str(NUMBER);
+                highlighted.push_str(&current_word);
+                highlighted.push_str(RESET);
+            } else {
+                highlighted.push_str(&current_word);
+            }
+        }
+
+        Cow::Owned(highlighted)
+    }
+
+    fn highlight_char(&self, _line: &str, _pos: usize, _kind: CmdKind) -> bool {
+        true
+    }
+}
+
+impl Hinter for SqlHighlighter {
+    type Hint = String;
+
+    fn hint(&self, _line: &str, _pos: usize, _ctx: &Context<'_>) -> Option<String> {
+        None
+    }
+}
+
+impl Completer for SqlHighlighter {
+    type Candidate = String;
+
+    fn complete(
+        &self,
+        _line: &str,
+        _pos: usize,
+        _ctx: &Context<'_>,
+    ) -> rustyline::Result<(usize, Vec<String>)> {
+        Ok((0, vec![]))
+    }
+}
+
+impl Validator for SqlHighlighter {}
+
+impl Helper for SqlHighlighter {}
 
 fn run_interactive_mode(database: &Database) -> Result<(), Box<dyn std::error::Error>> {
     println!("PrismDB v{}", env!("CARGO_PKG_VERSION"));
@@ -16,7 +176,9 @@ fn run_interactive_mode(database: &Database) -> Result<(), Box<dyn std::error::E
     println!();
 
     let mut settings = Settings::default();
-    let mut rl = DefaultEditor::new()?;
+    let mut rl = Editor::new()?;
+    rl.set_helper(Some(SqlHighlighter));
+
     let history_file = dirs::home_dir()
         .map(|mut path| {
             path.push(".prismdb_history");
@@ -31,9 +193,9 @@ fn run_interactive_mode(database: &Database) -> Result<(), Box<dyn std::error::E
 
     loop {
         let prompt = if sql_buffer.is_empty() {
-            "prismdb> "
+            "P> "
         } else {
-            "       -> "
+            "  -> "
         };
 
         match rl.readline(prompt) {
@@ -392,7 +554,32 @@ fn execute_sql(database: &Database, sql: &str, settings: &Settings) -> Result<()
 
     match database.execute_sql_collect(sql) {
         Ok(result) => {
-            if result.row_count() > 0 {
+            // Check if this is a DML result (single column, single row with BigInt count)
+            // DML operations (INSERT/UPDATE/DELETE) return a count, not actual data
+            // They have empty column metadata (no schema) and a single chunk with one column
+            let is_dml_result = result.columns.is_empty()
+                && result.row_count() == 1
+                && result.chunks().len() == 1
+                && result.chunks()[0].column_count() == 1;
+
+            // For DML results, extract the actual affected row count
+            let affected_rows = if is_dml_result {
+                // Get the count value from the result
+                if let Some(first_value) = result.first_value() {
+                    if let prism::Value::BigInt(count) = first_value {
+                        count as usize
+                    } else {
+                        result.row_count()
+                    }
+                } else {
+                    result.row_count()
+                }
+            } else {
+                result.row_count()
+            };
+
+            // Only display the table for non-DML results
+            if !is_dml_result && result.row_count() > 0 {
                 println!("{}", result.to_table_string());
                 println!();
             }
@@ -402,16 +589,16 @@ fn execute_sql(database: &Database, sql: &str, settings: &Settings) -> Result<()
                     let elapsed = start.elapsed();
                     println!(
                         "Query executed successfully ({} row{} in {:.3}s)",
-                        result.row_count(),
-                        if result.row_count() == 1 { "" } else { "s" },
+                        affected_rows,
+                        if affected_rows == 1 { "" } else { "s" },
                         elapsed.as_secs_f64()
                     );
                 }
             } else {
                 println!(
                     "Query executed successfully ({} row{})",
-                    result.row_count(),
-                    if result.row_count() == 1 { "" } else { "s" }
+                    affected_rows,
+                    if affected_rows == 1 { "" } else { "s" }
                 );
             }
 
@@ -430,11 +617,11 @@ struct Cli {
     #[arg(short, long)]
     database: Option<String>,
 
-    /// SQL query to execute
+    /// SQL query to execute (non-interactive mode)
     #[arg(short, long)]
     query: Option<String>,
 
-    /// Run in interactive mode
+    /// Run in interactive mode (default if no query is provided)
     #[arg(short, long)]
     interactive: bool,
 
@@ -472,11 +659,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 process::exit(1);
             }
         }
-    } else if cli.interactive {
-        run_interactive_mode(&database)?;
     } else {
-        println!("Please provide either --query or --interactive flag");
-        process::exit(1);
+        // Default to interactive mode
+        run_interactive_mode(&database)?;
     }
 
     Ok(())

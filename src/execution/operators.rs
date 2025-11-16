@@ -1414,7 +1414,7 @@ impl ExecutionOperator for InsertOperator {
         let mut input_stream = engine.execute(input_plan)?;
 
         // Insert all rows from the input stream
-        let mut _total_rows_inserted = 0;
+        let mut total_rows_inserted = 0;
 
         while let Some(chunk_result) = input_stream.next() {
             let chunk = chunk_result?;
@@ -1437,18 +1437,21 @@ impl ExecutionOperator for InsertOperator {
 
                 // Insert the row
                 table_data.insert_row(&values)?;
-                _total_rows_inserted += 1;
+                total_rows_inserted += 1;
             }
 
             // Drop the lock after each chunk to allow concurrent access
             drop(table_data);
         }
 
-        // Return a result indicating the number of rows inserted
-        // For now, return an empty DataChunk since INSERT doesn't return data
-        let result = vec![DataChunk::new()];
+        // Return a DataChunk with the affected row count
+        use crate::types::{LogicalType, Vector};
+        let mut result_chunk = DataChunk::new();
+        let mut count_vector = Vector::new(LogicalType::BigInt, 1);
+        count_vector.push(&Value::BigInt(total_rows_inserted as i64))?;
+        result_chunk.add_vector(count_vector)?;
 
-        Ok(Box::new(SimpleDataChunkStream::new(result)))
+        Ok(Box::new(SimpleDataChunkStream::new(vec![result_chunk])))
     }
 
     fn schema(&self) -> Vec<PhysicalColumn> {
@@ -1524,7 +1527,7 @@ impl ExecutionOperator for UpdateOperator {
         // Get the total physical number of rows (including deleted ones)
         // We need to iterate over all rows to find which ones match the WHERE clause
         let row_count = table_data.physical_row_count();
-        let mut _rows_updated = 0;
+        let mut rows_updated = 0;
 
         // Process rows in chunks
         const CHUNK_SIZE: usize = 1024;
@@ -1567,13 +1570,22 @@ impl ExecutionOperator for UpdateOperator {
 
                     // Update the row using the actual row ID
                     table_data.update_row(actual_row_id, &row_values)?;
-                    _rows_updated += 1;
+                    rows_updated += 1;
                 }
             }
         }
 
-        // Return empty result (UPDATE doesn't return rows)
-        Ok(Box::new(SimpleDataChunkStream::empty()))
+        // Drop table data lock
+        drop(table_data);
+
+        // Return a DataChunk with the affected row count
+        use crate::types::{LogicalType, Vector};
+        let mut result_chunk = DataChunk::new();
+        let mut count_vector = Vector::new(LogicalType::BigInt, 1);
+        count_vector.push(&Value::BigInt(rows_updated as i64))?;
+        result_chunk.add_vector(count_vector)?;
+
+        Ok(Box::new(SimpleDataChunkStream::new(vec![result_chunk])))
     }
 
     fn schema(&self) -> Vec<PhysicalColumn> {
@@ -1635,7 +1647,6 @@ impl ExecutionOperator for DeleteOperator {
         // Get the total physical number of rows (including deleted ones)
         // We need to iterate over all rows to find which ones match the WHERE clause
         let row_count = table_data.physical_row_count();
-        let mut _rows_deleted = 0;
 
         // Collect row IDs to delete (iterate backwards to avoid index shifting issues)
         let mut rows_to_delete = Vec::new();
@@ -1668,13 +1679,22 @@ impl ExecutionOperator for DeleteOperator {
 
         // Delete rows in reverse order to avoid index issues
         rows_to_delete.sort_by(|a, b| b.cmp(a));  // Sort descending
+        let rows_deleted = rows_to_delete.len();
         for row_id in rows_to_delete {
             table_data.delete_row(row_id)?;
-            _rows_deleted += 1;
         }
 
-        // Return empty result (DELETE doesn't return rows)
-        Ok(Box::new(SimpleDataChunkStream::empty()))
+        // Drop table data lock
+        drop(table_data);
+
+        // Return a DataChunk with the affected row count
+        use crate::types::{LogicalType, Vector};
+        let mut result_chunk = DataChunk::new();
+        let mut count_vector = Vector::new(LogicalType::BigInt, 1);
+        count_vector.push(&Value::BigInt(rows_deleted as i64))?;
+        result_chunk.add_vector(count_vector)?;
+
+        Ok(Box::new(SimpleDataChunkStream::new(vec![result_chunk])))
     }
 
     fn schema(&self) -> Vec<PhysicalColumn> {

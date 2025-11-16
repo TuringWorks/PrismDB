@@ -641,6 +641,68 @@ impl ExpressionBinder {
                 // CONCAT returns VARCHAR
                 Ok(LogicalType::Varchar)
             }
+            // String functions
+            "UPPER" | "LOWER" | "TRIM" | "LTRIM" | "RTRIM" | "REVERSE" => {
+                if args.len() != 1 {
+                    return Err(crate::common::error::PrismDBError::InvalidValue(format!(
+                        "{} requires exactly 1 argument",
+                        function_name
+                    )));
+                }
+                if !args[0].is_string() {
+                    return Err(crate::common::error::PrismDBError::InvalidValue(format!(
+                        "{} requires string argument",
+                        function_name
+                    )));
+                }
+                Ok(LogicalType::Varchar)
+            }
+            "LEFT" | "RIGHT" | "REPEAT" => {
+                if args.len() != 2 {
+                    return Err(crate::common::error::PrismDBError::InvalidValue(format!(
+                        "{} requires exactly 2 arguments",
+                        function_name
+                    )));
+                }
+                if !args[0].is_string() {
+                    return Err(crate::common::error::PrismDBError::InvalidValue(format!(
+                        "{} first argument must be string",
+                        function_name
+                    )));
+                }
+                Ok(LogicalType::Varchar)
+            }
+            "REPLACE" => {
+                if args.len() != 3 {
+                    return Err(crate::common::error::PrismDBError::InvalidValue(
+                        "REPLACE requires exactly 3 arguments".to_string(),
+                    ));
+                }
+                if !args[0].is_string() {
+                    return Err(crate::common::error::PrismDBError::InvalidValue(
+                        "REPLACE first argument must be string".to_string(),
+                    ));
+                }
+                Ok(LogicalType::Varchar)
+            }
+            "POSITION" | "STRPOS" | "INSTR" => {
+                if args.len() != 2 {
+                    return Err(crate::common::error::PrismDBError::InvalidValue(format!(
+                        "{} requires exactly 2 arguments",
+                        function_name
+                    )));
+                }
+                Ok(LogicalType::Integer)
+            }
+            "LPAD" | "RPAD" => {
+                if args.len() < 2 || args.len() > 3 {
+                    return Err(crate::common::error::PrismDBError::InvalidValue(format!(
+                        "{} requires 2 or 3 arguments",
+                        function_name
+                    )));
+                }
+                Ok(LogicalType::Varchar)
+            }
             _ => Err(crate::common::error::PrismDBError::InvalidValue(format!(
                 "Unknown function: {}",
                 function_name
