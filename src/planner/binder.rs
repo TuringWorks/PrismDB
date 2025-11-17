@@ -257,6 +257,9 @@ impl Binder {
             Statement::Delete(delete) => self.bind_delete_statement(delete),
             Statement::CreateTable(create) => self.bind_create_table_statement(create),
             Statement::DropTable(drop) => self.bind_drop_table_statement(drop),
+            Statement::CreateView(create_view) => self.bind_create_view_statement(create_view),
+            Statement::DropView(drop_view) => self.bind_drop_view_statement(drop_view),
+            Statement::RefreshMaterializedView(refresh) => self.bind_refresh_materialized_view_statement(refresh),
             Statement::Explain(explain) => self.bind_explain_statement(explain),
             _ => Err(PrismDBError::Parse(format!(
                 "Statement type not yet supported: {:?}",
@@ -1301,6 +1304,96 @@ impl Binder {
             drop.table_name.clone(),
             drop.if_exists,
         )))
+    }
+
+    /// Bind CREATE [MATERIALIZED] VIEW statement
+    fn bind_create_view_statement(
+        &mut self,
+        create_view: &crate::parser::ast::CreateViewStatement,
+    ) -> PrismDBResult<LogicalPlan> {
+        use crate::planner::logical_plan::{LogicalCreateMaterializedView, LogicalCreateTable};
+
+        // Bind the query
+        let query_plan = self.bind_select_statement(&create_view.query)?;
+
+        if create_view.materialized {
+            // Create materialized view
+            let refresh_strategy = match &create_view.refresh_strategy {
+                Some(crate::parser::ast::ViewRefreshStrategy::Manual) => "Manual",
+                Some(crate::parser::ast::ViewRefreshStrategy::OnCommit) => "OnCommit",
+                Some(crate::parser::ast::ViewRefreshStrategy::OnDemand) => "OnDemand",
+                Some(crate::parser::ast::ViewRefreshStrategy::Incremental) => "Incremental",
+                None => "Manual",
+            };
+
+            Ok(LogicalPlan::CreateMaterializedView(
+                LogicalCreateMaterializedView::new(
+                    create_view.view_name.clone(),
+                    query_plan,
+                    create_view.columns.clone(),
+                    refresh_strategy.to_string(),
+                    create_view.or_replace,
+                    create_view.if_not_exists,
+                ),
+            ))
+        } else {
+            // Regular view - for now, we'll treat it as DDL that doesn't need execution
+            // In a full implementation, we'd store the view definition in the catalog
+            Ok(LogicalPlan::CreateTable(LogicalCreateTable::new(
+                create_view.view_name.clone(),
+                vec![],
+                create_view.if_not_exists,
+            )))
+        }
+    }
+
+    /// Bind DROP [MATERIALIZED] VIEW statement
+    fn bind_drop_view_statement(
+        &mut self,
+        drop_view: &crate::parser::ast::DropViewStatement,
+    ) -> PrismDBResult<LogicalPlan> {
+        use crate::planner::logical_plan::{LogicalDropMaterializedView, LogicalDropTable};
+
+        if drop_view.materialized {
+            Ok(LogicalPlan::DropMaterializedView(
+                LogicalDropMaterializedView::new(
+                    drop_view.view_name.clone(),
+                    drop_view.if_exists,
+                ),
+            ))
+        } else {
+            // Regular view
+            Ok(LogicalPlan::DropTable(LogicalDropTable::new(
+                drop_view.view_name.clone(),
+                drop_view.if_exists,
+            )))
+        }
+    }
+
+    /// Bind REFRESH MATERIALIZED VIEW statement
+    fn bind_refresh_materialized_view_statement(
+        &mut self,
+        refresh: &crate::parser::ast::RefreshMaterializedViewStatement,
+    ) -> PrismDBResult<LogicalPlan> {
+        use crate::planner::logical_plan::{LogicalRefreshMaterializedView, LogicalTableScan};
+
+        // For refresh, we create a simple placeholder plan
+        // The actual query will be retrieved from the catalog during execution
+        let placeholder_query = LogicalPlan::TableScan(LogicalTableScan {
+            table_name: refresh.view_name.clone(),
+            schema: vec![],
+            column_ids: vec![],
+            filters: vec![],
+            limit: None,
+        });
+
+        Ok(LogicalPlan::RefreshMaterializedView(
+            LogicalRefreshMaterializedView::new(
+                refresh.view_name.clone(),
+                placeholder_query,
+                refresh.concurrently,
+            ),
+        ))
     }
 
     /// Bind EXPLAIN statement

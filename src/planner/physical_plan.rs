@@ -59,6 +59,14 @@ pub enum PhysicalPlan {
     Unpivot(PhysicalUnpivot),
     /// Recursive CTE with fixpoint iteration
     RecursiveCTE(PhysicalRecursiveCTE),
+    /// Iterator stream for arbitrary data sources
+    IteratorStream(PhysicalIteratorStream),
+    /// Create a materialized view
+    CreateMaterializedView(PhysicalCreateMaterializedView),
+    /// Drop a materialized view
+    DropMaterializedView(PhysicalDropMaterializedView),
+    /// Refresh a materialized view
+    RefreshMaterializedView(PhysicalRefreshMaterializedView),
     /// Empty result
     EmptyResult(PhysicalEmptyResult),
 }
@@ -93,6 +101,10 @@ impl PhysicalPlan {
             PhysicalPlan::Pivot(pivot) => pivot.schema.clone(),
             PhysicalPlan::Unpivot(unpivot) => unpivot.schema.clone(),
             PhysicalPlan::RecursiveCTE(rcte) => rcte.schema.clone(),
+            PhysicalPlan::IteratorStream(stream) => stream.schema.clone(),
+            PhysicalPlan::CreateMaterializedView(_) => vec![],
+            PhysicalPlan::DropMaterializedView(_) => vec![],
+            PhysicalPlan::RefreshMaterializedView(_) => vec![],
             PhysicalPlan::EmptyResult(_) => vec![],
         }
     }
@@ -124,6 +136,10 @@ impl PhysicalPlan {
             PhysicalPlan::Pivot(pivot) => vec![&pivot.input],
             PhysicalPlan::Unpivot(unpivot) => vec![&unpivot.input],
             PhysicalPlan::RecursiveCTE(rcte) => vec![&rcte.base_case, &rcte.recursive_case],
+            PhysicalPlan::IteratorStream(_) => vec![],
+            PhysicalPlan::CreateMaterializedView(cmv) => vec![&cmv.query],
+            PhysicalPlan::DropMaterializedView(_) => vec![],
+            PhysicalPlan::RefreshMaterializedView(rmv) => vec![&rmv.query],
             PhysicalPlan::EmptyResult(_) => vec![],
         }
     }
@@ -730,6 +746,71 @@ impl PhysicalRecursiveCTE {
             schema,
         }
     }
+}
+
+/// Physical iterator stream operator for wrapping arbitrary data sources
+#[derive(Debug, Clone)]
+pub struct PhysicalIteratorStream {
+    /// Pre-materialized data chunks
+    pub chunks: Vec<DataChunk>,
+    /// Output schema
+    pub schema: Vec<PhysicalColumn>,
+}
+
+impl PhysicalIteratorStream {
+    pub fn new(chunks: Vec<DataChunk>, schema: Vec<PhysicalColumn>) -> Self {
+        Self { chunks, schema }
+    }
+
+    pub fn empty(schema: Vec<PhysicalColumn>) -> Self {
+        Self {
+            chunks: Vec::new(),
+            schema,
+        }
+    }
+}
+
+/// Physical create materialized view operator
+#[derive(Debug, Clone)]
+pub struct PhysicalCreateMaterializedView {
+    /// View name
+    pub view_name: String,
+    /// Schema name (optional)
+    pub schema_name: Option<String>,
+    /// Column names
+    pub columns: Vec<String>,
+    /// Query to execute
+    pub query: Box<PhysicalPlan>,
+    /// Refresh strategy
+    pub refresh_strategy: String, // Serialized refresh strategy
+    /// Replace if exists
+    pub or_replace: bool,
+    /// Create only if not exists
+    pub if_not_exists: bool,
+}
+
+/// Physical drop materialized view operator
+#[derive(Debug, Clone)]
+pub struct PhysicalDropMaterializedView {
+    /// View name
+    pub view_name: String,
+    /// Schema name (optional)
+    pub schema_name: Option<String>,
+    /// Drop only if exists
+    pub if_exists: bool,
+}
+
+/// Physical refresh materialized view operator
+#[derive(Debug, Clone)]
+pub struct PhysicalRefreshMaterializedView {
+    /// View name
+    pub view_name: String,
+    /// Schema name (optional)
+    pub schema_name: Option<String>,
+    /// Query to re-execute
+    pub query: Box<PhysicalPlan>,
+    /// Refresh concurrently (without blocking reads)
+    pub concurrently: bool,
 }
 
 /// Execution operator trait

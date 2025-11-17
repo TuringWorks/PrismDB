@@ -71,12 +71,12 @@ impl ExecutionContext {
             ));
         }
 
-        let transaction_id = self
-            .transaction_manager
-            .begin_transaction(crate::storage::transaction::IsolationLevel::ReadCommitted)?;
-        self.transaction_id = Some(transaction_id);
-        // TODO: Create actual transaction object
-        // For now, we'll work with the ID only
+        let transaction = Arc::new(Transaction::new(
+            self.transaction_manager.clone(),
+            crate::storage::transaction::IsolationLevel::ReadCommitted,
+        )?);
+        self.transaction_id = Some(transaction.id);
+        self.transaction = Some(transaction);
         Ok(())
     }
 
@@ -106,10 +106,9 @@ impl ExecutionContext {
 
     /// Get the current transaction
     pub fn get_transaction(&self) -> PrismDBResult<Arc<Transaction>> {
-        // TODO: Return actual transaction object
-        Err(PrismDBError::Transaction(
-            "Transaction not implemented".to_string(),
-        ))
+        self.transaction
+            .clone()
+            .ok_or_else(|| PrismDBError::Transaction("No active transaction".to_string()))
     }
 
     /// Set a parameter
@@ -257,5 +256,76 @@ impl ContextValue {
                 format!("{{{}}}", items.join(", "))
             }
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::catalog::Catalog;
+    use crate::storage::TransactionManager;
+
+    #[test]
+    fn test_get_transaction_without_begin() {
+        let transaction_manager = Arc::new(TransactionManager::new());
+        let catalog = Arc::new(RwLock::new(Catalog::new()));
+        let context = ExecutionContext::new(transaction_manager, catalog);
+
+        // Should fail when no transaction is active
+        assert!(context.get_transaction().is_err());
+        let err = context.get_transaction().unwrap_err();
+        assert!(matches!(err, PrismDBError::Transaction(_)));
+    }
+
+    #[test]
+    fn test_get_transaction_with_active_transaction() {
+        let transaction_manager = Arc::new(TransactionManager::new());
+        let catalog = Arc::new(RwLock::new(Catalog::new()));
+        let mut context = ExecutionContext::new(transaction_manager, catalog);
+
+        // Begin a transaction
+        context.begin_transaction().unwrap();
+
+        // Should succeed
+        let transaction = context.get_transaction();
+        assert!(transaction.is_ok());
+
+        let tx = transaction.unwrap();
+        assert_eq!(tx.id, context.get_transaction_id().unwrap());
+    }
+
+    #[test]
+    fn test_get_transaction_after_commit() {
+        let transaction_manager = Arc::new(TransactionManager::new());
+        let catalog = Arc::new(RwLock::new(Catalog::new()));
+        let mut context = ExecutionContext::new(transaction_manager, catalog);
+
+        // Begin and commit
+        context.begin_transaction().unwrap();
+        let tx_id = context.get_transaction_id();
+        assert!(tx_id.is_some());
+
+        context.commit_transaction().unwrap();
+
+        // Should fail after commit
+        assert!(context.get_transaction().is_err());
+        assert!(context.get_transaction_id().is_none());
+    }
+
+    #[test]
+    fn test_get_transaction_after_rollback() {
+        let transaction_manager = Arc::new(TransactionManager::new());
+        let catalog = Arc::new(RwLock::new(Catalog::new()));
+        let mut context = ExecutionContext::new(transaction_manager, catalog);
+
+        // Begin and rollback
+        context.begin_transaction().unwrap();
+        assert!(context.get_transaction().is_ok());
+
+        context.rollback_transaction().unwrap();
+
+        // Should fail after rollback
+        assert!(context.get_transaction().is_err());
+        assert!(context.get_transaction_id().is_none());
     }
 }

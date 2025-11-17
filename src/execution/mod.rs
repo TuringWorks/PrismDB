@@ -167,6 +167,27 @@ impl ExecutionEngine {
                     self.context.clone(),
                 )))
             }
+            PhysicalPlan::IteratorStream(stream) => {
+                Ok(Box::new(IteratorStreamOperator::new(stream)))
+            }
+            PhysicalPlan::CreateMaterializedView(create_mv) => {
+                Ok(Box::new(CreateMaterializedViewOperator::new(
+                    create_mv,
+                    self.context.clone(),
+                )))
+            }
+            PhysicalPlan::DropMaterializedView(drop_mv) => {
+                Ok(Box::new(DropMaterializedViewOperator::new(
+                    drop_mv,
+                    self.context.clone(),
+                )))
+            }
+            PhysicalPlan::RefreshMaterializedView(refresh_mv) => {
+                Ok(Box::new(RefreshMaterializedViewOperator::new(
+                    refresh_mv,
+                    self.context.clone(),
+                )))
+            }
             PhysicalPlan::EmptyResult(_) => Ok(Box::new(SimpleDataChunkStream::empty())),
             _ => Err(PrismDBError::Execution(format!(
                 "Unsupported physical plan: {:?}",

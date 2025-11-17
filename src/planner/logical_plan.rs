@@ -43,6 +43,12 @@ pub enum LogicalPlan {
     CreateTable(LogicalCreateTable),
     /// Drop a table
     DropTable(LogicalDropTable),
+    /// Create a materialized view
+    CreateMaterializedView(LogicalCreateMaterializedView),
+    /// Drop a materialized view
+    DropMaterializedView(LogicalDropMaterializedView),
+    /// Refresh a materialized view
+    RefreshMaterializedView(LogicalRefreshMaterializedView),
     /// Explain a plan
     Explain(LogicalExplain),
     /// Values list (constant rows)
@@ -77,6 +83,9 @@ impl LogicalPlan {
             LogicalPlan::Delete(_) => vec![],
             LogicalPlan::CreateTable(_) => vec![],
             LogicalPlan::DropTable(_) => vec![],
+            LogicalPlan::CreateMaterializedView(_) => vec![],
+            LogicalPlan::DropMaterializedView(_) => vec![],
+            LogicalPlan::RefreshMaterializedView(_) => vec![],
             LogicalPlan::Explain(_) => vec![Column::new("plan".to_string(), LogicalType::Text)],
             LogicalPlan::Values(values) => values.schema.clone(),
             LogicalPlan::Pivot(pivot) => pivot.schema.clone(),
@@ -105,6 +114,9 @@ impl LogicalPlan {
             LogicalPlan::Delete(_) => vec![],
             LogicalPlan::CreateTable(_) => vec![],
             LogicalPlan::DropTable(_) => vec![],
+            LogicalPlan::CreateMaterializedView(cmv) => vec![&cmv.query],
+            LogicalPlan::DropMaterializedView(_) => vec![],
+            LogicalPlan::RefreshMaterializedView(rmv) => vec![&rmv.query],
             LogicalPlan::Explain(explain) => vec![&explain.input],
             LogicalPlan::Values(_) => vec![],
             LogicalPlan::Pivot(pivot) => vec![&pivot.input],
@@ -133,6 +145,9 @@ impl LogicalPlan {
             LogicalPlan::Delete(_) => vec![],
             LogicalPlan::CreateTable(_) => vec![],
             LogicalPlan::DropTable(_) => vec![],
+            LogicalPlan::CreateMaterializedView(cmv) => vec![&mut cmv.query],
+            LogicalPlan::DropMaterializedView(_) => vec![],
+            LogicalPlan::RefreshMaterializedView(rmv) => vec![&mut rmv.query],
             LogicalPlan::Explain(explain) => vec![&mut explain.input],
             LogicalPlan::Values(_) => vec![],
             LogicalPlan::Pivot(pivot) => vec![&mut pivot.input],
@@ -518,6 +533,71 @@ impl LogicalDropTable {
         Self {
             table_name,
             if_exists,
+        }
+    }
+}
+
+/// Create materialized view operation
+#[derive(Debug, Clone)]
+pub struct LogicalCreateMaterializedView {
+    pub view_name: String,
+    pub query: Box<LogicalPlan>,
+    pub columns: Vec<String>,
+    pub refresh_strategy: String,
+    pub or_replace: bool,
+    pub if_not_exists: bool,
+}
+
+impl LogicalCreateMaterializedView {
+    pub fn new(
+        view_name: String,
+        query: LogicalPlan,
+        columns: Vec<String>,
+        refresh_strategy: String,
+        or_replace: bool,
+        if_not_exists: bool,
+    ) -> Self {
+        Self {
+            view_name,
+            query: Box::new(query),
+            columns,
+            refresh_strategy,
+            or_replace,
+            if_not_exists,
+        }
+    }
+}
+
+/// Drop materialized view operation
+#[derive(Debug, Clone)]
+pub struct LogicalDropMaterializedView {
+    pub view_name: String,
+    pub if_exists: bool,
+}
+
+impl LogicalDropMaterializedView {
+    pub fn new(view_name: String, if_exists: bool) -> Self {
+        Self {
+            view_name,
+            if_exists,
+        }
+    }
+}
+
+/// Refresh materialized view operation
+#[derive(Debug, Clone)]
+pub struct LogicalRefreshMaterializedView {
+    pub view_name: String,
+    pub query: Box<LogicalPlan>,
+    pub concurrently: bool,
+}
+
+impl LogicalRefreshMaterializedView {
+    pub fn new(view_name: String, query: LogicalPlan, concurrently: bool) -> Self {
+        Self {
+            view_name,
+            query: Box::new(query),
+            concurrently,
         }
     }
 }

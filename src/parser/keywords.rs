@@ -60,6 +60,8 @@ pub enum Keyword {
     Temporary,
     Temp,
     Materialized,
+    Refresh,
+    Concurrently,
     Force,
 
     // DML keywords
@@ -318,6 +320,8 @@ impl Keyword {
             Keyword::Temporary,
             Keyword::Temp,
             Keyword::Materialized,
+            Keyword::Refresh,
+            Keyword::Concurrently,
             Keyword::Force,
             // DML keywords
             Keyword::Insert,
@@ -562,6 +566,8 @@ impl std::fmt::Display for Keyword {
             Keyword::Temporary => "TEMPORARY",
             Keyword::Temp => "TEMP",
             Keyword::Materialized => "MATERIALIZED",
+            Keyword::Refresh => "REFRESH",
+            Keyword::Concurrently => "CONCURRENTLY",
             Keyword::Force => "FORCE",
 
             // DML keywords

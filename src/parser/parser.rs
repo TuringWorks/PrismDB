@@ -89,6 +89,10 @@ impl Parser {
             }
             TokenType::Keyword(Keyword::Create) => self.parse_create_statement(),
             TokenType::Keyword(Keyword::Drop) => self.parse_drop_statement(),
+            TokenType::Keyword(Keyword::Refresh) => {
+                let refresh = self.parse_refresh_materialized_view_statement()?;
+                Ok(Statement::RefreshMaterializedView(refresh))
+            }
             TokenType::Keyword(Keyword::Alter) => {
                 let alter = self.parse_alter_table_statement()?;
                 Ok(Statement::AlterTable(alter))
@@ -1697,8 +1701,11 @@ impl Parser {
         })
     }
 
-    /// Parse DROP VIEW statement
+    /// Parse DROP [MATERIALIZED] VIEW statement
     fn parse_drop_view_statement(&mut self) -> PrismDBResult<DropViewStatement> {
+        // Check for MATERIALIZED keyword
+        let materialized = self.consume_keyword(Keyword::Materialized).is_ok();
+
         let if_exists = self.consume_keyword(Keyword::If).is_ok()
             && self.consume_keyword(Keyword::Exists).is_ok();
 
@@ -1708,6 +1715,7 @@ impl Parser {
         Ok(DropViewStatement {
             view_name,
             if_exists,
+            materialized,
         })
     }
 
@@ -1779,10 +1787,13 @@ impl Parser {
         })
     }
 
-    /// Parse CREATE VIEW statement
+    /// Parse CREATE [MATERIALIZED] VIEW statement
     fn parse_create_view_statement(&mut self) -> PrismDBResult<CreateViewStatement> {
         let or_replace = self.consume_keyword(Keyword::Or).is_ok()
             && self.consume_keyword(Keyword::Replace).is_ok();
+
+        // Check for MATERIALIZED keyword
+        let materialized = self.consume_keyword(Keyword::Materialized).is_ok();
 
         let if_not_exists = self.consume_keyword(Keyword::If).is_ok()
             && self.consume_keyword(Keyword::Not).is_ok()
@@ -1804,6 +1815,13 @@ impl Parser {
             self.consume_token(&TokenType::RightParen)?;
         }
 
+        // Parse refresh strategy for materialized views
+        let refresh_strategy = if materialized {
+            self.parse_refresh_strategy()?
+        } else {
+            None
+        };
+
         self.consume_keyword(Keyword::As)?;
         let query = self.parse_select_statement()?;
 
@@ -1813,7 +1831,22 @@ impl Parser {
             query,
             or_replace,
             if_not_exists,
+            materialized,
+            refresh_strategy,
         })
+    }
+
+    /// Parse refresh strategy for materialized views
+    fn parse_refresh_strategy(&mut self) -> PrismDBResult<Option<ViewRefreshStrategy>> {
+        use crate::parser::ast::ViewRefreshStrategy;
+
+        // Check for WITH clause (for future WITH [NO] DATA support)
+        // For now, we skip this and default to Manual refresh
+        // Actual refresh happens separately via REFRESH command
+
+        // For now, default to Manual refresh strategy
+        // Future: parse REFRESH ON COMMIT, etc.
+        Ok(Some(ViewRefreshStrategy::Manual))
     }
 
     /// Parse CREATE INDEX statement
@@ -2386,6 +2419,25 @@ impl Parser {
             name_column,
             value_columns,
             include_nulls,
+        })
+    }
+
+    /// Parse REFRESH MATERIALIZED VIEW statement
+    fn parse_refresh_materialized_view_statement(&mut self) -> PrismDBResult<RefreshMaterializedViewStatement> {
+        use crate::parser::ast::RefreshMaterializedViewStatement;
+
+        self.consume_keyword(Keyword::Refresh)?;
+        self.consume_keyword(Keyword::Materialized)?;
+        self.consume_keyword(Keyword::View)?;
+
+        // Check for CONCURRENTLY option
+        let concurrently = self.consume_keyword(Keyword::Concurrently).is_ok();
+
+        let view_name = self.consume_identifier()?;
+
+        Ok(RefreshMaterializedViewStatement {
+            view_name,
+            concurrently,
         })
     }
 }

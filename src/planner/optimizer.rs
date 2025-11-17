@@ -426,6 +426,44 @@ impl QueryOptimizer {
                 drop.table_name,
                 drop.if_exists,
             ))),
+            LogicalPlan::CreateMaterializedView(create_mv) => {
+                // Convert query to physical plan
+                let query = self.convert_to_physical(*create_mv.query)?;
+
+                Ok(PhysicalPlan::CreateMaterializedView(
+                    PhysicalCreateMaterializedView {
+                        view_name: create_mv.view_name,
+                        schema_name: None, // Use default schema
+                        columns: create_mv.columns,
+                        query: Box::new(query),
+                        refresh_strategy: create_mv.refresh_strategy,
+                        or_replace: create_mv.or_replace,
+                        if_not_exists: create_mv.if_not_exists,
+                    },
+                ))
+            }
+            LogicalPlan::DropMaterializedView(drop_mv) => {
+                Ok(PhysicalPlan::DropMaterializedView(
+                    PhysicalDropMaterializedView {
+                        view_name: drop_mv.view_name,
+                        schema_name: None, // Use default schema
+                        if_exists: drop_mv.if_exists,
+                    },
+                ))
+            }
+            LogicalPlan::RefreshMaterializedView(refresh_mv) => {
+                // Convert query to physical plan
+                let query = self.convert_to_physical(*refresh_mv.query)?;
+
+                Ok(PhysicalPlan::RefreshMaterializedView(
+                    PhysicalRefreshMaterializedView {
+                        view_name: refresh_mv.view_name,
+                        schema_name: None, // Use default schema
+                        query: Box::new(query),
+                        concurrently: refresh_mv.concurrently,
+                    },
+                ))
+            }
             LogicalPlan::Explain(explain) => {
                 let input = self.convert_to_physical(*explain.input)?;
                 Ok(PhysicalPlan::Explain(PhysicalExplain::new(
@@ -677,6 +715,9 @@ impl QueryOptimizer {
             LogicalPlan::Delete(_) => vec![],
             LogicalPlan::CreateTable(_) => vec![],
             LogicalPlan::DropTable(_) => vec![],
+            LogicalPlan::CreateMaterializedView(_) => vec![],
+            LogicalPlan::DropMaterializedView(_) => vec![],
+            LogicalPlan::RefreshMaterializedView(_) => vec![],
             LogicalPlan::Explain(explain) => Self::get_input_schema(&explain.input),
             LogicalPlan::Values(values) => values.schema.clone(),
             LogicalPlan::Pivot(pivot) => pivot.schema.clone(),

@@ -126,6 +126,33 @@ impl Schema {
         Ok(())
     }
 
+    /// Create a materialized view
+    pub fn create_materialized_view(
+        &mut self,
+        view_name: &str,
+        query: &str,
+        column_names: Vec<String>,
+        refresh_strategy: crate::catalog::view::RefreshStrategy,
+    ) -> PrismDBResult<()> {
+        if self.views.contains_key(view_name) {
+            return Err(PrismDBError::Catalog(format!(
+                "View '{}' already exists in schema '{}'",
+                view_name, self.name
+            )));
+        }
+
+        let view = View::new_materialized(
+            view_name.to_string(),
+            query.to_string(),
+            column_names,
+            refresh_strategy,
+        )?;
+        self.views
+            .insert(view_name.to_string(), Arc::new(RwLock::new(view)));
+        self.metadata.touch();
+        Ok(())
+    }
+
     /// Drop a view
     pub fn drop_view(&mut self, view_name: &str) -> PrismDBResult<()> {
         if !self.views.contains_key(view_name) {
@@ -158,6 +185,42 @@ impl Schema {
     /// List all views
     pub fn list_views(&self) -> Vec<String> {
         self.views.keys().cloned().collect()
+    }
+
+    /// Refresh a materialized view with new data
+    pub fn refresh_materialized_view(
+        &mut self,
+        view_name: &str,
+        data: Vec<crate::types::DataChunk>,
+    ) -> PrismDBResult<()> {
+        let view_arc = self.get_view(view_name)?;
+        let mut view = view_arc.write().unwrap();
+
+        if !view.is_materialized {
+            return Err(PrismDBError::Catalog(format!(
+                "View '{}' is not a materialized view",
+                view_name
+            )));
+        }
+
+        view.refresh(data)?;
+        self.metadata.touch();
+        Ok(())
+    }
+
+    /// Mark materialized views that depend on a table as stale
+    pub fn mark_dependent_views_stale(&mut self, table_name: &str) -> PrismDBResult<()> {
+        for view_arc in self.views.values() {
+            let mut view = view_arc.write().unwrap();
+            if view.is_materialized {
+                if let Some(ref metadata) = view.materialized_metadata {
+                    if metadata.dependencies.contains(&table_name.to_string()) {
+                        view.mark_stale()?;
+                    }
+                }
+            }
+        }
+        Ok(())
     }
 
     /// Create an index

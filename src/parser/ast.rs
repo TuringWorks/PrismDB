@@ -17,6 +17,7 @@ pub enum Statement {
     AlterTable(AlterTableStatement),
     CreateView(CreateViewStatement),
     DropView(DropViewStatement),
+    RefreshMaterializedView(RefreshMaterializedViewStatement),
     CreateIndex(CreateIndexStatement),
     DropIndex(DropIndexStatement),
     Begin(BeginStatement),
@@ -288,6 +289,17 @@ pub struct CreateViewStatement {
     pub query: SelectStatement,
     pub or_replace: bool,
     pub if_not_exists: bool,
+    pub materialized: bool,
+    pub refresh_strategy: Option<ViewRefreshStrategy>,
+}
+
+/// Refresh strategy for materialized views
+#[derive(Debug, Clone, PartialEq)]
+pub enum ViewRefreshStrategy {
+    Manual,
+    OnCommit,
+    OnDemand,
+    Incremental,
 }
 
 /// DROP VIEW statement
@@ -295,6 +307,14 @@ pub struct CreateViewStatement {
 pub struct DropViewStatement {
     pub view_name: String,
     pub if_exists: bool,
+    pub materialized: bool,
+}
+
+/// REFRESH MATERIALIZED VIEW statement
+#[derive(Debug, Clone, PartialEq)]
+pub struct RefreshMaterializedViewStatement {
+    pub view_name: String,
+    pub concurrently: bool,
 }
 
 /// CREATE INDEX statement

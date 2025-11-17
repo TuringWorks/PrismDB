@@ -2687,3 +2687,177 @@ impl ExecutionOperator for RecursiveCTEOperator {
         self.schema.clone()
     }
 }
+
+/// Iterator stream operator for wrapping arbitrary data sources
+pub struct IteratorStreamOperator {
+    stream: crate::planner::PhysicalIteratorStream,
+}
+
+impl IteratorStreamOperator {
+    pub fn new(stream: crate::planner::PhysicalIteratorStream) -> Self {
+        Self { stream }
+    }
+}
+
+impl ExecutionOperator for IteratorStreamOperator {
+    fn execute(&self) -> PrismDBResult<Box<dyn DataChunkStream>> {
+        Ok(Box::new(SimpleDataChunkStream::new(
+            self.stream.chunks.clone(),
+        )))
+    }
+
+    fn schema(&self) -> Vec<PhysicalColumn> {
+        self.stream.schema.clone()
+    }
+}
+
+/// Create materialized view operator
+pub struct CreateMaterializedViewOperator {
+    create_mv: crate::planner::PhysicalCreateMaterializedView,
+    context: ExecutionContext,
+}
+
+impl CreateMaterializedViewOperator {
+    pub fn new(
+        create_mv: crate::planner::PhysicalCreateMaterializedView,
+        context: ExecutionContext,
+    ) -> Self {
+        Self { create_mv, context }
+    }
+}
+
+impl ExecutionOperator for CreateMaterializedViewOperator {
+    fn execute(&self) -> PrismDBResult<Box<dyn DataChunkStream>> {
+        use crate::catalog::view::RefreshStrategy;
+
+        // Parse refresh strategy
+        let refresh_strategy = match self.create_mv.refresh_strategy.as_str() {
+            "Manual" => RefreshStrategy::Manual,
+            "OnCommit" => RefreshStrategy::OnCommit,
+            "OnDemand" => RefreshStrategy::OnDemand,
+            "Incremental" => RefreshStrategy::Incremental,
+            _ => RefreshStrategy::Manual,
+        };
+
+        // Get catalog and create materialized view
+        let catalog = self.context.catalog.write().unwrap();
+        let schema_name = self.create_mv.schema_name.as_deref().unwrap_or("main");
+        
+        // Get or create schema
+        if let Ok(schema_lock) = catalog.get_schema(schema_name) {
+            let mut schema = schema_lock.write().unwrap();
+
+            // Extract query as string (simplified for now)
+            let query_str = format!("{:?}", self.create_mv.query);
+
+            schema.create_materialized_view(
+                &self.create_mv.view_name,
+                &query_str,
+                self.create_mv.columns.clone(),
+                refresh_strategy,
+            )?;
+        } else {
+            return Err(PrismDBError::Catalog(format!(
+                "Schema '{}' does not exist",
+                schema_name
+            )));
+        }
+
+        Ok(Box::new(SimpleDataChunkStream::empty()))
+    }
+
+    fn schema(&self) -> Vec<PhysicalColumn> {
+        vec![]
+    }
+}
+
+/// Drop materialized view operator
+pub struct DropMaterializedViewOperator {
+    drop_mv: crate::planner::PhysicalDropMaterializedView,
+    context: ExecutionContext,
+}
+
+impl DropMaterializedViewOperator {
+    pub fn new(
+        drop_mv: crate::planner::PhysicalDropMaterializedView,
+        context: ExecutionContext,
+    ) -> Self {
+        Self { drop_mv, context }
+    }
+}
+
+impl ExecutionOperator for DropMaterializedViewOperator {
+    fn execute(&self) -> PrismDBResult<Box<dyn DataChunkStream>> {
+        let catalog = self.context.catalog.write().unwrap();
+        let schema_name = self.drop_mv.schema_name.as_deref().unwrap_or("main");
+        
+        if let Ok(schema_lock) = catalog.get_schema(schema_name) {
+            let mut schema = schema_lock.write().unwrap();
+
+            if self.drop_mv.if_exists && !schema.view_exists(&self.drop_mv.view_name) {
+                return Ok(Box::new(SimpleDataChunkStream::empty()));
+            }
+
+            schema.drop_view(&self.drop_mv.view_name)?;
+        } else if !self.drop_mv.if_exists {
+            return Err(PrismDBError::Catalog(format!(
+                "Schema '{}' does not exist",
+                schema_name
+            )));
+        }
+
+        Ok(Box::new(SimpleDataChunkStream::empty()))
+    }
+
+    fn schema(&self) -> Vec<PhysicalColumn> {
+        vec![]
+    }
+}
+
+/// Refresh materialized view operator
+pub struct RefreshMaterializedViewOperator {
+    refresh_mv: crate::planner::PhysicalRefreshMaterializedView,
+    context: ExecutionContext,
+}
+
+impl RefreshMaterializedViewOperator {
+    pub fn new(
+        refresh_mv: crate::planner::PhysicalRefreshMaterializedView,
+        context: ExecutionContext,
+    ) -> Self {
+        Self {
+            refresh_mv,
+            context,
+        }
+    }
+}
+
+impl ExecutionOperator for RefreshMaterializedViewOperator {
+    fn execute(&self) -> PrismDBResult<Box<dyn DataChunkStream>> {
+        use crate::execution::ExecutionEngine;
+
+        // Execute the query to get fresh data
+        let mut engine = ExecutionEngine::new(self.context.clone());
+        let result_chunks = engine.execute_collect(*self.refresh_mv.query.clone())?;
+
+        // Update the materialized view with fresh data
+        let catalog = self.context.catalog.write().unwrap();
+        let schema_name = self.refresh_mv.schema_name.as_deref().unwrap_or("main");
+        
+        if let Ok(schema_lock) = catalog.get_schema(schema_name) {
+            let mut schema = schema_lock.write().unwrap();
+            schema.refresh_materialized_view(&self.refresh_mv.view_name, result_chunks)?;
+        } else {
+            return Err(PrismDBError::Catalog(format!(
+                "Schema '{}' does not exist",
+                schema_name
+            )));
+        }
+
+        Ok(Box::new(SimpleDataChunkStream::empty()))
+    }
+
+    fn schema(&self) -> Vec<PhysicalColumn> {
+        vec![]
+    }
+}
